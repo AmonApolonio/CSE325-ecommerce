@@ -6,10 +6,6 @@ using backend.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- NPGSQL GLOBAL ENUM MAPPING (Crucial Step for PostgreSQL) ---
-// O mapeamento de ENUM será agora feito no EcommerceDbContext.cs.
-/* Os comandos obsoletos e o EnableEnumMapping foram removidos daqui. */
-
 
 // Add services to the container.
 
