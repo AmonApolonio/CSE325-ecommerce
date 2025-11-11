@@ -3,10 +3,15 @@ namespace backend.Models
     // Define os possíveis status de um pedido.
     public enum OrderStatus
     {
-        Pending,
+        PendingPayment,
+        PaymentConfirmed,
+        PaymentFailed,
+        Cancelled,
         Processing,
         Shipped,
+        OutForDelivery,
         Delivered,
-        Cancelled
+        Completed,
+        Returned
     }
 }
