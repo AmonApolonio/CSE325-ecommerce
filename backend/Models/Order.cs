@@ -1,7 +1,8 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Collections.Generic; // 💡 Necessário para ICollection
+using System.Collections.Generic;
+using backend.Models; // Garante que Currency, Payment, etc., são reconhecidos
 
 namespace backend.Models
 {
@@ -65,12 +66,12 @@ namespace backend.Models
         [ForeignKey(nameof(ClientId))]
         public Client Client { get; set; } = null!;
         
-        // 🔑 1. COLEÇÃO FALTANTE: Pagamentos (One-to-Many: Order -> Payments)
-        // Isso é necessário para configurar corretamente a linha em Payment: WithMany(o => o.Payments)
+        // 🔑 A CORREÇÃO NECESSÁRIA: Propriedade de Navegação para Currency
+        [ForeignKey(nameof(CurrencyCode))]
+        public Currency Currency { get; set; } = null!; // 👈 AGORA INCLUÍDA!
+        
         public ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
-        // 🔑 2. COLEÇÃO FALTANTE: Produtos do Pedido (Many-to-Many via OrderProduct)
-        // Isso é necessário para configurar corretamente a linha no DbContext: WithMany(o => o.OrderProducts)
         public ICollection<OrderProduct> OrderProducts { get; set; } = new List<OrderProduct>();
     }
 }

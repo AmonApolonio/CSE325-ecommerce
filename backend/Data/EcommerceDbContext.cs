@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using backend.Models;
 using System.Reflection; 
+
 namespace backend.Data
 {
     public class EcommerceDbContext : DbContext
@@ -46,7 +47,7 @@ namespace backend.Data
             // Ensure Npgsql knows how to map C# enums to PostgreSQL custom types
             modelBuilder.HasPostgresEnum<OrderStatus>("order_status", "public");
             modelBuilder.HasPostgresEnum<PaymentStatus>("payment_status", "public");
-            modelBuilder.HasPostgresEnum<CartStatus>("cart_status", "public"); // Assumindo CartStatus
+            modelBuilder.HasPostgresEnum<CartStatus>("cart_status", "public"); 
 
             // Apply column type conversion to all entities using these enums
             modelBuilder.Entity<Order>()
@@ -72,18 +73,51 @@ namespace backend.Data
             // Configure the Order relationship
             modelBuilder.Entity<OrderProduct>()
                 .HasOne(op => op.Order)
-                .WithMany(o => o.OrderProducts) // Chave da relação: Order -> OrderProducts
+                .WithMany(o => o.OrderProducts)
                 .HasForeignKey(op => op.OrderId);
 
             // Configure the Product relationship
             modelBuilder.Entity<OrderProduct>()
                 .HasOne(op => op.Product)
-                .WithMany(p => p.OrderProducts) // Chave da relação: Product -> OrderProducts
+                .WithMany(p => p.OrderProducts)
                 .HasForeignKey(op => op.ProductId);
+                
+            // -------------------------------------------------------------
+            // 3. CART AND CART ITEM CONFIGURATION
+            // -------------------------------------------------------------
+            
+            // CartItem (Muitos-para-Muitos virtual)
+            modelBuilder.Entity<CartItem>()
+                .HasKey(ci => new { ci.CartId, ci.ProductId }); // Chave composta para item do carrinho
+            
+            // Cart (One) to CartItem (Many)
+            modelBuilder.Entity<CartItem>()
+                .HasOne(ci => ci.Cart)
+                .WithMany(c => c.Items) // Assumindo uma coleção 'Items' na classe Cart
+                .HasForeignKey(ci => ci.CartId);
+
+            // Client (One) to Cart (One-to-One / One-to-Zero-or-One)
+            // O carrinho pertence a um cliente, usando ClientId como Chave Primária/Estrangeira
+            modelBuilder.Entity<Cart>()
+                .HasOne(c => c.Client)
+                .WithOne(cl => cl.Cart) // Assumindo uma propriedade 'Cart' na classe Client
+                .HasForeignKey<Cart>(c => c.ClientId);
 
             // -------------------------------------------------------------
-            // 3. FOREIGN KEY RELATIONSHIPS (Fluent API)
+            // 4. FOREIGN KEY RELATIONSHIPS (Fluent API)
             // -------------------------------------------------------------
+
+            // Seller (One) to Product (Many) - 💡 Adicionado
+            modelBuilder.Entity<Product>()
+                .HasOne(p => p.Seller)
+                .WithMany(s => s.Products) // Assumindo uma coleção 'Products' na classe Seller
+                .HasForeignKey(p => p.SellerId);
+
+            // Product (One) to Category (Many) - 💡 Adicionado
+            modelBuilder.Entity<Product>()
+                .HasOne(p => p.Category)
+                .WithMany(c => c.Products) // Assumindo uma coleção 'Products' na classe Category
+                .HasForeignKey(p => p.CategoryId);
 
             // Client (One) to Order (Many)
             modelBuilder.Entity<Order>()
@@ -97,10 +131,10 @@ namespace backend.Data
                 .WithMany(o => o.Payments)
                 .HasForeignKey(p => p.OrderId);
 
-            // Product (One) to CartItem (Many)
+            // Product (One) to CartItem (Many) - Configurado acima
             modelBuilder.Entity<CartItem>()
                 .HasOne(ci => ci.Product)
-                .WithMany(p => p.CartItems)
+                .WithMany(p => p.CartItems) 
                 .HasForeignKey(ci => ci.ProductId);
 
             // Product (One) to ProductImage (Many)
@@ -111,13 +145,13 @@ namespace backend.Data
 
             // Currency (One) to Order (Many)
             modelBuilder.Entity<Order>()
-                .HasOne<Currency>()
+                .HasOne(o => o.Currency) // Assumindo que Order tem uma FK CurrencyCode e uma nav prop Currency
                 .WithMany(c => c.Orders)
                 .HasForeignKey(o => o.CurrencyCode)
                 .IsRequired();
 
             // -------------------------------------------------------------
-            // 4. Index Configuration (Mantidas)
+            // 5. Index Configuration (Mantidas)
             // -------------------------------------------------------------
 
             modelBuilder.Entity<Product>()

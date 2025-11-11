@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Collections.Generic; // 💡 Adicionar para ICollection
-
+using backend.Models;
 namespace backend.Models
 {
     // Defines the table name and schema (public.currencies)
@@ -30,12 +30,7 @@ namespace backend.Models
         [Column("symbol")]
         public required string Symbol { get; set; }
 
-        // -------------------------------------------------------------
-        // Navigation Properties (Relationships)
-        // -------------------------------------------------------------
         
-        // 🔑 PROPRIEDADE FALTANTE/COMENTADA: Coleção de Pedidos (Orders)
-        // Isso resolve o erro CS1061. Uma moeda pode ser usada em VÁRIOS pedidos.
         public ICollection<Order> Orders { get; set; } = new List<Order>();
     }
 }

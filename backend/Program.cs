@@ -1,6 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
-using backend.Models;
 using backend.Data;
 // using Npgsql.EntityFrameworkCore.PostgreSQL; removido pois EnableEnumMapping não será mais usado aqui
 
