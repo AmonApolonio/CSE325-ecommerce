@@ -1,15 +1,20 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Collections.Generic; 
 
 namespace backend.Models
 {
-    // Defines the table name and schema (public.products)
+    // Defines the table name and schema
     [Table("products", Schema = "public")]
     public class Product
     {
+        // -------------------------------------------------------------
+        // Properties (Columns)
+        // -------------------------------------------------------------
+
         // product_id bigint NOT NULL (Primary Key)
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)] // Assumes it is auto-generated in the DB
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("product_id")]
         public long ProductId { get; set; }
 
@@ -17,27 +22,27 @@ namespace backend.Models
         [Required]
         [StringLength(200)]
         [Column("name")]
-        public required string Name { get; set; } // Using C# 11 'required' for NRT
+        public required string Name { get; set; }
 
         // description text NOT NULL
         [Required]
         [Column("description")]
-        public required string Description { get; set; } // Mapped to string (text type)
+        public required string Description { get; set; }
 
         // price integer DEFAULT 0 NOT NULL
         [Required]
         [Column("price")]
-        public int Price { get; set; } = 0; // Mapped to int, set default value
+        public int Price { get; set; } = 0;
 
         // inventory numeric DEFAULT 0 NOT NULL
         [Required]
-        [Column("inventory", TypeName = "numeric")] // Mapped to decimal for precision
-        public decimal Inventory { get; set; } = 0; // Set default value
+        [Column("inventory", TypeName = "numeric")]
+        public decimal Inventory { get; set; } = 0;
 
         // category_id bigint DEFAULT 0 NOT NULL (Foreign Key)
         [Required]
         [Column("category_id")]
-        public long CategoryId { get; set; } = 0; // Set default value
+        public long CategoryId { get; set; } = 0;
 
         // seller_id bigint NOT NULL (Foreign Key)
         [Required]
@@ -46,6 +51,7 @@ namespace backend.Models
 
         // -------------------------------------------------------------
         // Navigation Properties (Relationships)
+        // -------------------------------------------------------------
 
         // Navigation property to the Category model
         [ForeignKey(nameof(CategoryId))]
@@ -54,5 +60,14 @@ namespace backend.Models
         // Navigation property to the Seller model
         [ForeignKey(nameof(SellerId))]
         public Seller Seller { get; set; } = null!;
+        
+        // Collection for the Many-to-Many relationship with Order via OrderProduct
+        public ICollection<OrderProduct> OrderProducts { get; set; } = new List<OrderProduct>();
+
+        // Collection for the One-to-Many relationship with CartItem
+        public ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
+
+        // Collection for the One-to-Many relationship with ProductImage
+        public ICollection<ProductImage> ProductImages { get; set; } = new List<ProductImage>();
     }
 }

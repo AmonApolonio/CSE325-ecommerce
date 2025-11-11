@@ -1,13 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using backend.Models; // Your Models namespace
-using backend.Data; // Assuming EcommerceDbContext is here
+using backend.Models;
+using backend.Data;
+using Microsoft.AspNetCore.OpenApi; 
 
 var builder = WebApplication.CreateBuilder(args);
 
 // --- NPGSQL GLOBAL ENUM MAPPING (Crucial Step for PostgreSQL) ---
-// This must be done BEFORE the DbContext is configured.
-// It maps the C# enums to the custom ENUM types created in your PostgreSQL database.
 NpgsqlConnection.GlobalTypeMapper.MapEnum<OrderStatus>("order_status");
 NpgsqlConnection.GlobalTypeMapper.MapEnum<PaymentStatus>("payment_status");
 
@@ -22,6 +21,8 @@ builder.Services.AddDbContext<EcommerceDbContext>(options =>
 );
 
 // 2. OPEN API/SWAGGER (Metadata configuration)
+// 🔑 CORREÇÃO: Adicione AddEndpointsApiExplorer()
+builder.Services.AddEndpointsApiExplorer(); 
 builder.Services.AddOpenApi();
 
 // 3. CORS Policy
@@ -40,6 +41,8 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    // 🔑 CORREÇÃO: Adicione UseSwagger() para gerar o arquivo JSON da documentação
+    app.UseSwagger(); 
     app.MapOpenApi();
 }
 
@@ -49,14 +52,11 @@ app.UseCors("AllowAll");
 
 // --- APPLICATION ENDPOINTS (Your custom API routes will go here) ---
 
-// Placeholder: Example of how a custom endpoint might look (e.g., product listing)
 app.MapGet("/products", () =>
 {
     // Logic to fetch products from the database using DbContext
     return Results.Ok("E-commerce API is running."); 
 })
 .WithName("GetProducts");
-
-// The original boilerplate WeatherForecast code was removed.
 
 app.Run();

@@ -1,69 +1,130 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using backend.Models;
-
-public class EcommerceDbContext : DbContext
+using System.Reflection; 
+namespace backend.Data
 {
-    public EcommerceDbContext(DbContextOptions<EcommerceDbContext> options)
-        : base(options)
+    public class EcommerceDbContext : DbContext
     {
-    }
+        public EcommerceDbContext(DbContextOptions<EcommerceDbContext> options)
+            : base(options)
+        {
+        }
 
-    //
-    // Mapping of Primary Tables
-    //
-    public DbSet<Seller> Sellers { get; set; }
-    public DbSet<Client> Clients { get; set; }
-    public DbSet<Category> Categories { get; set; }
-    public DbSet<Product> Products { get; set; }
-    public DbSet<Order> Orders { get; set; }
-    public DbSet<Payment> Payments { get; set; }
-    public DbSet<Cart> Carts { get; set; }
-    public DbSet<Currency> Currencies { get; set; }
-    
-    //
-    // Mapping of Join Tables (N:M) and Details
-    //
-    public DbSet<ProductImage> ProductImages { get; set; }
-    public DbSet<OrderProduct> OrderProducts { get; set; }
-    public DbSet<CartItem> CartItems { get; set; }
-    // Also include DbSet for your recommendation tables, such as Recommendation, RecommendationProduct, etc.
+        // =================================================================
+        // DB SETS (TABELAS)
+        // =================================================================
 
-    //
-    // Model and Composite Key Configuration
-    //
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        base.OnModelCreating(modelBuilder);
+        // Core Entities
+        public DbSet<Client> Clients { get; set; } = null!;
+        public DbSet<Seller> Sellers { get; set; } = null!;
+        public DbSet<Category> Categories { get; set; } = null!;
+        public DbSet<Product> Products { get; set; } = null!;
+        public DbSet<Currency> Currencies { get; set; } = null!;
 
-        // 1. Composite Key Configuration for the Orders/Products Join Table
+        // Transactional Entities
+        public DbSet<Cart> Carts { get; set; } = null!;
+        public DbSet<CartItem> CartItems { get; set; } = null!;
+        public DbSet<Order> Orders { get; set; } = null!;
+        public DbSet<Payment> Payments { get; set; } = null!;
 
-        modelBuilder.Entity<OrderProduct>()
-            // The Primary Key is composed of the Order ID and the Product ID
-            .HasKey(op => new { op.OrderId, op.ProductId });
+        // Supporting Entities
+        public DbSet<ProductImage> ProductImages { get; set; } = null!;
+        public DbSet<OrderProduct> OrderProducts { get; set; } = null!;
 
-        // 2. Composite Key Configuration for the Cart/Products Join Table
+        // =================================================================
+        // MODEL AND RELATIONSHIP CONFIGURATION
+        // =================================================================
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<CartItem>()
-             .HasKey(ci => new { ci.CartId, ci.ProductId }); 
+            // -------------------------------------------------------------
+            // 1. POSTGRESQL ENUM SETUP (CRITICAL FOR NPGSQL)
+            // -------------------------------------------------------------
 
-        // 3. Configuration for Column Names with Case Sensitivity 
-        // Example: Maps the 'name' column in SQL to the Name property in C#
-        modelBuilder.Entity<Category>().Property(c => c.Name).HasColumnName("name");
-        
-        // Configuration for correct ENUM type mapping
-        
-        // Currency mapping, ensuring the VARCHAR(3) type is respected
-        modelBuilder.Entity<Currency>().Property(c => c.CurrencyCode).HasMaxLength(3);
-        
-     
-        modelBuilder.Entity<Product>()
-            .HasIndex(p => p.SellerId).IsUnique(false);
+            // Ensure Npgsql knows how to map C# enums to PostgreSQL custom types
+            modelBuilder.HasPostgresEnum<OrderStatus>("order_status", "public");
+            modelBuilder.HasPostgresEnum<PaymentStatus>("payment_status", "public");
+            modelBuilder.HasPostgresEnum<CartStatus>("cart_status", "public"); // Assumindo CartStatus
 
-        modelBuilder.Entity<Product>()
-            .HasIndex(p => p.CategoryId).IsUnique(false);
-            
-        modelBuilder.Entity<Order>()
-        .Property(o => o.Status)
-        .HasConversion<string>();
+            // Apply column type conversion to all entities using these enums
+            modelBuilder.Entity<Order>()
+                .Property(o => o.Status)
+                .HasColumnType("public.order_status");
+
+            modelBuilder.Entity<Payment>()
+                .Property(p => p.TransactionStatus)
+                .HasColumnType("public.payment_status");
+
+            modelBuilder.Entity<Cart>()
+                .Property(c => c.Status)
+                .HasColumnType("public.cart_status");
+
+            // -------------------------------------------------------------
+            // 2. MANY-TO-MANY (OrderProduct) COMPOSITE KEY CONFIGURATION
+            // -------------------------------------------------------------
+
+            // Define the composite primary key for the junction table
+            modelBuilder.Entity<OrderProduct>()
+                .HasKey(op => new { op.OrderId, op.ProductId });
+
+            // Configure the Order relationship
+            modelBuilder.Entity<OrderProduct>()
+                .HasOne(op => op.Order)
+                .WithMany(o => o.OrderProducts) // Chave da relação: Order -> OrderProducts
+                .HasForeignKey(op => op.OrderId);
+
+            // Configure the Product relationship
+            modelBuilder.Entity<OrderProduct>()
+                .HasOne(op => op.Product)
+                .WithMany(p => p.OrderProducts) // Chave da relação: Product -> OrderProducts
+                .HasForeignKey(op => op.ProductId);
+
+            // -------------------------------------------------------------
+            // 3. FOREIGN KEY RELATIONSHIPS (Fluent API)
+            // -------------------------------------------------------------
+
+            // Client (One) to Order (Many)
+            modelBuilder.Entity<Order>()
+                .HasOne(o => o.Client)
+                .WithMany(c => c.Orders)
+                .HasForeignKey(o => o.ClientId);
+
+            // Order (One) to Payment (Many)
+            modelBuilder.Entity<Payment>()
+                .HasOne(p => p.Order)
+                .WithMany(o => o.Payments)
+                .HasForeignKey(p => p.OrderId);
+
+            // Product (One) to CartItem (Many)
+            modelBuilder.Entity<CartItem>()
+                .HasOne(ci => ci.Product)
+                .WithMany(p => p.CartItems)
+                .HasForeignKey(ci => ci.ProductId);
+
+            // Product (One) to ProductImage (Many)
+            modelBuilder.Entity<ProductImage>()
+                .HasOne(pi => pi.Product)
+                .WithMany(p => p.ProductImages)
+                .HasForeignKey(pi => pi.ProductId);
+
+            // Currency (One) to Order (Many)
+            modelBuilder.Entity<Order>()
+                .HasOne<Currency>()
+                .WithMany(c => c.Orders)
+                .HasForeignKey(o => o.CurrencyCode)
+                .IsRequired();
+
+            // -------------------------------------------------------------
+            // 4. Index Configuration (Mantidas)
+            // -------------------------------------------------------------
+
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => p.SellerId).IsUnique(false);
+
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => p.CategoryId).IsUnique(false);
+        }
     }
 }
