@@ -20,6 +20,7 @@
     </PackageReference>
     <PackageReference Include="Npgsql" Version="8.0.4" /> <!-- NOVO: Driver Npgsql principal para resolver CS0246 -->
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.0" />
   </ItemGroup>
 
 </Project>

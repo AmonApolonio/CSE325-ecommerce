@@ -2,13 +2,13 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using backend.Models;
 using backend.Data;
-using Microsoft.AspNetCore.OpenApi; 
+// using Npgsql.EntityFrameworkCore.PostgreSQL; removido pois EnableEnumMapping não será mais usado aqui
 
 var builder = WebApplication.CreateBuilder(args);
 
 // --- NPGSQL GLOBAL ENUM MAPPING (Crucial Step for PostgreSQL) ---
-NpgsqlConnection.GlobalTypeMapper.MapEnum<OrderStatus>("order_status");
-NpgsqlConnection.GlobalTypeMapper.MapEnum<PaymentStatus>("payment_status");
+// O mapeamento de ENUM será agora feito no EcommerceDbContext.cs.
+/* Os comandos obsoletos e o EnableEnumMapping foram removidos daqui. */
 
 
 // Add services to the container.
@@ -17,13 +17,13 @@ NpgsqlConnection.GlobalTypeMapper.MapEnum<PaymentStatus>("payment_status");
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<EcommerceDbContext>(options =>
-    options.UseNpgsql(connectionString)
+    // A configuração do ENUM será feita via OnModelCreating no DbContext
+    options.UseNpgsql(connectionString) 
 );
 
 // 2. OPEN API/SWAGGER (Metadata configuration)
-// 🔑 CORREÇÃO: Adicione AddEndpointsApiExplorer()
 builder.Services.AddEndpointsApiExplorer(); 
-builder.Services.AddOpenApi();
+builder.Services.AddSwaggerGen(); 
 
 // 3. CORS Policy
 builder.Services.AddCors(options =>
@@ -41,9 +41,8 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    // 🔑 CORREÇÃO: Adicione UseSwagger() para gerar o arquivo JSON da documentação
     app.UseSwagger(); 
-    app.MapOpenApi();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
@@ -52,10 +51,19 @@ app.UseCors("AllowAll");
 
 // --- APPLICATION ENDPOINTS (Your custom API routes will go here) ---
 
-app.MapGet("/products", () =>
+// Implementation of the GET /products endpoint to fetch real data
+app.MapGet("/products", async (EcommerceDbContext dbContext) =>
 {
-    // Logic to fetch products from the database using DbContext
-    return Results.Ok("E-commerce API is running."); 
+    // Use ToListAsync() to fetch all products from the database asynchronously
+    var products = await dbContext.Products.ToListAsync();
+    
+    // Check if the list is empty
+    if (!products.Any())
+    {
+        return Results.NotFound("No products found in the database.");
+    }
+
+    return Results.Ok(products); 
 })
 .WithName("GetProducts");
 
