@@ -8,7 +8,6 @@ namespace backend.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    // 1. O nome da classe deve ser Category:
     public class CategoriesController : ControllerBase
     {
         private readonly EcommerceDbContext _context;
@@ -19,29 +18,37 @@ namespace backend.Controllers
         }
 
         // -------------------------------------------------------------
-        // POST: api/Categories (Create Category)
+        // 1. POST: api/Categories (CREATE)
         // -------------------------------------------------------------
         [HttpPost]
-        // 2. O objeto de entrada e o retorno devem ser Category:
         public async Task<ActionResult<Category>> PostCategory([FromBody] Category category)
         {
-            // 3. Deve usar a coleção Categories do DbContext:
             _context.Categories.Add(category); 
-            
             await _context.SaveChangesAsync();
 
-            // 4. O retorno deve usar o nome correto do método GET (GetCategoryById)
             return CreatedAtAction(nameof(GetCategoryById), new { id = category.CategoryId }, category);
         }
 
         // -------------------------------------------------------------
-        // GET: api/Categories/{id} (Required for CreatedAtAction)
+        // 2. GET: api/Categories (READ ALL)
+        // -------------------------------------------------------------
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<Category>>> GetCategories()
+        {
+            if (_context.Categories == null)
+            {
+                return NotFound("Category set is null.");
+            }
+            
+            return await _context.Categories.ToListAsync();
+        }
+
+        // -------------------------------------------------------------
+        // 3. GET: api/Categories/{id} (READ BY ID)
         // -------------------------------------------------------------
         [HttpGet("{id}")]
-        // 5. O objeto de retorno deve ser Category:
         public async Task<ActionResult<Category>> GetCategoryById(long id)
         {
-            // 6. Deve buscar na coleção Categories:
             var category = await _context.Categories.FindAsync(id);
 
             if (category == null)
@@ -50,19 +57,57 @@ namespace backend.Controllers
             }
             return category;
         }
-        
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Category>>> GetCategories()
+
+        // -------------------------------------------------------------
+        // 4. PUT: api/Categories/{id} (UPDATE) ✏️
+        // -------------------------------------------------------------
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutCategory(long id, [FromBody] Category category)
         {
-            // Checks if the Categories table is empty (or if the DbSet is null)
-            if (_context.Categories == null)
+            if (id != category.CategoryId)
             {
-                return NotFound("Category set is null.");
+                return BadRequest("Category ID mismatch.");
             }
-            
-            // 1. Fetches all records from the Categories table
-            // 2. ToListAsync() executes the query in the database asynchronously
-            return await _context.Categories.ToListAsync();
+
+            // Marca o objeto como modificado, preparando para o Update
+            _context.Entry(category).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Verifica se a categoria ainda existe
+                if (!_context.Categories.Any(e => e.CategoryId == id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent(); // Retorna 204 Success (Nenhum Conteúdo)
+        }
+
+        // -------------------------------------------------------------
+        // 5. DELETE: api/Categories/{id} (DELETE) 🗑️
+        // -------------------------------------------------------------
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteCategory(long id)
+        {
+            var category = await _context.Categories.FindAsync(id);
+            if (category == null)
+            {
+                return NotFound();
+            }
+
+            _context.Categories.Remove(category);
+            await _context.SaveChangesAsync();
+
+            return NoContent(); // Retorna 204 Success
         }
     }
 }
