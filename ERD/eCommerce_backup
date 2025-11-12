@@ -470,7 +470,7 @@ ALTER SEQUENCE public.product_image_product_image_id_seq OWNED BY public.product
 --
 
 CREATE TABLE public.products (
-    product_id bigint NOT NULL,
+    product_id bigserial NOT NULL,
     name character varying(200) NOT NULL,
     description text NOT NULL,
     price integer DEFAULT 0 NOT NULL,

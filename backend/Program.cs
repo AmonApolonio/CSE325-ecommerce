@@ -1,9 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using backend.Data;
-// using Npgsql.EntityFrameworkCore.PostgreSQL; removido pois EnableEnumMapping não será mais usado aqui
 
 var builder = WebApplication.CreateBuilder(args);
-
 
 // Add services to the container.
 
@@ -11,13 +9,15 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<EcommerceDbContext>(options =>
-    // A configuração do ENUM será feita via OnModelCreating no DbContext
     options.UseNpgsql(connectionString) 
 );
 
 // 2. OPEN API/SWAGGER (Metadata configuration)
 builder.Services.AddEndpointsApiExplorer(); 
 builder.Services.AddSwaggerGen(); 
+
+// 🔑 NOVO: Adiciona o serviço de controladores (necessário para APIs com Controllers)
+builder.Services.AddControllers(); 
 
 // 3. CORS Policy
 builder.Services.AddCors(options =>
@@ -45,7 +45,12 @@ app.UseCors("AllowAll");
 
 // --- APPLICATION ENDPOINTS (Your custom API routes will go here) ---
 
+// 🔑 NOVO: Mapeia todos os controladores descobertos (incluindo ProductsController)
+app.MapControllers(); 
+
 // Implementation of the GET /products endpoint to fetch real data
+// Nota: Este MapGet duplicará a funcionalidade do GetProducts no seu controller,
+// mas vou mantê-lo aqui para consistência com o seu código original.
 app.MapGet("/products", async (EcommerceDbContext dbContext) =>
 {
     // Use ToListAsync() to fetch all products from the database asynchronously
@@ -59,6 +64,6 @@ app.MapGet("/products", async (EcommerceDbContext dbContext) =>
 
     return Results.Ok(products); 
 })
-.WithName("GetProducts");
+.WithName("GetProductsMinimalApi"); // Renomeado para evitar conflito de nome, se necessário.
 
 app.Run();

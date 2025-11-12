@@ -107,13 +107,13 @@ namespace backend.Data
             // 4. FOREIGN KEY RELATIONSHIPS (Fluent API)
             // -------------------------------------------------------------
 
-            // Seller (One) to Product (Many) - 💡 Adicionado
+            // Seller (One) to Product (Many) 
             modelBuilder.Entity<Product>()
                 .HasOne(p => p.Seller)
                 .WithMany(s => s.Products) // Assumindo uma coleção 'Products' na classe Seller
                 .HasForeignKey(p => p.SellerId);
 
-            // Product (One) to Category (Many) - 💡 Adicionado
+            // Product (One) to Category (Many) 
             modelBuilder.Entity<Product>()
                 .HasOne(p => p.Category)
                 .WithMany(c => c.Products) // Assumindo uma coleção 'Products' na classe Category

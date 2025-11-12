@@ -79,9 +79,11 @@ namespace backend.Models
         // -------------------------------------------------------------
         // Navigation Properties (Relationships)
         // -------------------------------------------------------------
-        
+
         // 🔑 PROPRIEDADE FALTANTE: Coleção de Pedidos (Orders)
         // Isso resolve o erro CS1061, mapeando o relacionamento Client (One) para Order (Many).
+        public Cart? Cart { get; set; }
         public ICollection<Order> Orders { get; set; } = new List<Order>();
+
     }
 }

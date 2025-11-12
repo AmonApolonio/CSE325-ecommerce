@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Collections.Generic;
 
 namespace backend.Models
 {
@@ -36,13 +37,13 @@ namespace backend.Models
         public required string Address1 { get; set; }
 
         // address2 character varying(255) NOT NULL
-        [Required]
+
         [StringLength(255)]
         [Column("address2")]
-        public required string Address2 { get; set; }
+        public  string? Address2 { get; set; }
 
         // city character varying(50) NOT NULL
-        [Required]
+
         [StringLength(50)]
         [Column("city")]
         public required string City { get; set; }
@@ -88,5 +89,11 @@ namespace backend.Models
         [Required]
         [Column("password_hash")]
         public required string PasswordHash { get; set; }
+
+        // -------------------------------------------------------------
+        // Navigation Properties (Relationships)
+        // -------------------------------------------------------------
+    
+        public ICollection<Product> Products { get; set; } = new List<Product>();
     }
 }

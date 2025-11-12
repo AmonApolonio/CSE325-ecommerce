@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Collections.Generic;
 
 namespace backend.Models
 {
@@ -23,5 +24,7 @@ namespace backend.Models
         [StringLength(500)]
         [Column("description")]
         public string? Description { get; set; } // string? indicates nullable
+
+        public ICollection<Product> Products { get; set; } = new List<Product>();
     }
 }

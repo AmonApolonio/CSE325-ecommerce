@@ -55,11 +55,11 @@ namespace backend.Models
 
         // Navigation property to the Category model
         [ForeignKey(nameof(CategoryId))]
-        public Category Category { get; set; } = null!;
+        public Category? Category { get; set; } = null!;
 
         // Navigation property to the Seller model
         [ForeignKey(nameof(SellerId))]
-        public Seller Seller { get; set; } = null!;
+        public Seller? Seller { get; set; } = null!;
         
         // Collection for the Many-to-Many relationship with Order via OrderProduct
         public ICollection<OrderProduct> OrderProducts { get; set; } = new List<OrderProduct>();
