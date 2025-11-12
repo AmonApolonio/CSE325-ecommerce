@@ -9,14 +9,16 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<EcommerceDbContext>(options =>
-    options.UseNpgsql(connectionString) 
+    options.UseNpgsql(connectionString)
 );
 
-// 2. OPEN API/SWAGGER (Metadata configuration)
+
+
+
 builder.Services.AddEndpointsApiExplorer(); 
 builder.Services.AddSwaggerGen(); 
 
-// 🔑 NOVO: Adiciona o serviço de controladores (necessário para APIs com Controllers)
+
 builder.Services.AddControllers(); 
 
 // 3. CORS Policy
@@ -32,10 +34,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+app.UseStaticFiles();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger(); 
+    app.UseSwagger();
     app.UseSwaggerUI();
 }
 
@@ -45,7 +49,7 @@ app.UseCors("AllowAll");
 
 // --- APPLICATION ENDPOINTS (Your custom API routes will go here) ---
 
-// 🔑 NOVO: Mapeia todos os controladores descobertos (incluindo ProductsController)
+
 app.MapControllers(); 
 
 // Implementation of the GET /products endpoint to fetch real data
