@@ -32,17 +32,17 @@ namespace backend.Models
         // price integer DEFAULT 0 NOT NULL
         [Required]
         [Column("price")]
-        public int Price { get; set; } = 0;
+        public int Price { get; set; } = 0; // Armazenado como inteiro (ex: centavos)
 
         // inventory numeric DEFAULT 0 NOT NULL
         [Required]
         [Column("inventory", TypeName = "numeric")]
-        public decimal Inventory { get; set; } = 0;
+        public decimal Inventory { get; set; } = 0; // Agora é 'Inventory'
 
         // category_id bigint DEFAULT 0 NOT NULL (Foreign Key)
         [Required]
         [Column("category_id")]
-        public long CategoryId { get; set; } = 0;
+        public long CategoryId { get; set; } = 0; // Agora é 'long'
 
         // seller_id bigint NOT NULL (Foreign Key)
         [Required]

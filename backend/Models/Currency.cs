@@ -1,15 +1,15 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Collections.Generic; // 💡 Adicionar para ICollection
-using backend.Models;
+using System.Collections.Generic; // Adicionar para ICollection
+
 namespace backend.Models
 {
-    // Defines the table name and schema (public.currencies)
+    // Define o nome da tabela e o esquema (public.currencies)
     [Table("currencies", Schema = "public")]
     public class Currency
     {
         // -------------------------------------------------------------
-        // Properties (Columns)
+        // Propriedades (Colunas)
         // -------------------------------------------------------------
         
         // currency_code character varying(3) NOT NULL (Primary Key)
@@ -30,6 +30,15 @@ namespace backend.Models
         [Column("symbol")]
         public required string Symbol { get; set; }
 
+        // exchange_rate_to_brl numeric NOT NULL
+        // CAMPO OBRIGATÓRIO: Armazena a taxa de câmbio em relação à moeda base (BRL).
+        [Required]
+        [Column("exchange_rate_to_brl", TypeName = "numeric")]
+        public decimal ExchangeRateToBRL { get; set; } = 1.00m; 
+
+        // -------------------------------------------------------------
+        // Propriedades de Navegação (Relacionamentos)
+        // -------------------------------------------------------------
         
         public ICollection<Order> Orders { get; set; } = new List<Order>();
     }
