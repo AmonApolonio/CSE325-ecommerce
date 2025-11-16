@@ -119,7 +119,7 @@ namespace backend.Data
             modelBuilder.Entity<Payment>()
                 .HasOne(p => p.Order)
                 .WithMany(o => o.Payments)
-                .HasForeignKey(p => o.OrderId);
+                .HasForeignKey(p => p.OrderId);
 
             modelBuilder.Entity<CartItem>()
                 .HasOne(ci => ci.Product)
@@ -148,9 +148,16 @@ namespace backend.Data
                 .HasIndex(p => p.CategoryId).IsUnique(false);
                 
             // -------------------------------------------------------------
-            // 6. CURRENCY DATA SEEDING
+            // 6. CURRENCY DATA SEEDING (APLICADA MELHORIA DE CONSISTÊNCIA)
             // -------------------------------------------------------------
-            modelBuilder.Entity<Currency>().HasData(GetCurrencySeedData());
+            modelBuilder.Entity<Currency>(entity =>
+            {
+                // Garante que o PK definido no HasData não seja gerado pelo banco.
+                // Ajuste 'CurrencyCode' se o nome da PK for diferente.
+                entity.Property(e => e.CurrencyCode) 
+                      .ValueGeneratedNever(); 
+                entity.HasData(GetCurrencySeedData());
+            });
 
             // -------------------------------------------------------------
             // 7. CATEGORY DATA SEEDING
@@ -404,7 +411,7 @@ namespace backend.Data
                 UserId = 1, 
                 Name = "Daniel Wilson", 
                 Email = "daniel.wilson@email.com", 
-                PasswordHash = MockPasswordHash,, 
+                PasswordHash = MockPasswordHash,
                 PhoneNumber = "11987654321",
                 Address1 = "Rua do Cliente Feliz, 100",
                 Address2 = "Apto 101",
@@ -418,7 +425,7 @@ namespace backend.Data
                 UserId = 2, 
                 Name = "Isabella Moore", 
                 Email = "isabella.moore@email.com", 
-                PasswordHash = MockPasswordHash,, 
+                PasswordHash = MockPasswordHash, 
                 PhoneNumber = "21991234567",
                 Address1 = "Av. Atlântica, 2000",
                 Address2 = "Bloco B, Sala 5",
@@ -432,7 +439,7 @@ namespace backend.Data
                 UserId = 3, 
                 Name = "John Smith", 
                 Email = "john.smith@email.com", 
-                PasswordHash = MockPasswordHash,, 
+                PasswordHash = MockPasswordHash, 
                 PhoneNumber = "31987654321",
                 Address1 = "Rua da Liberdade, 333",
                 Address2 = "Casa",
@@ -446,7 +453,7 @@ namespace backend.Data
                 UserId = 4, 
                 Name = "Olivia Miller", 
                 Email = "olivia.miller@email.com", 
-                PasswordHash = MockPasswordHash,, 
+                PasswordHash = MockPasswordHash, 
                 PhoneNumber = "41999887766",
                 Address1 = "Rua das Flores, 500",
                 Address2 = "Fundos",
@@ -460,7 +467,7 @@ namespace backend.Data
                 UserId = 5, 
                 Name = "Sophia Davis", 
                 Email = "sophia.davis@email.com", 
-                PasswordHash = MockPasswordHash,, 
+                PasswordHash = MockPasswordHash, 
                 PhoneNumber = "51987659876",
                 Address1 = "Av. Principal, 800",
                 Address2 = "Sala 12",
@@ -474,7 +481,7 @@ namespace backend.Data
                 UserId = 6, 
                 Name = "Emily Johnson", 
                 Email = "emily.johnson@email.com", 
-                PasswordHash = MockPasswordHash,, 
+                PasswordHash = MockPasswordHash, 
                 PhoneNumber = "61988776655",
                 Address1 = "Praça dos Três Poderes, 1",
                 Address2 = "",
@@ -488,7 +495,7 @@ namespace backend.Data
                 UserId = 7, 
                 Name = "James Taylor", 
                 Email = "james.taylor@email.com", 
-                PasswordHash = MockPasswordHash,, 
+                PasswordHash = MockPasswordHash, 
                 PhoneNumber = "81977665544",
                 Address1 = "Rua do Sol, 456",
                 Address2 = "Ponto de Referência: Próximo à praia",
