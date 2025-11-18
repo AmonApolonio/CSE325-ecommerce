@@ -1,0 +1,26 @@
+.categories-section {
+    padding: var(--spacing-lg);
+}
+
+.categories-section h2 {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-2xl);
+    margin-bottom: var(--spacing-lg);
+    color: var(--color-dark);
+    text-align: center;
+}
+
+.categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Responsive */
+@media (max-width: 767px) {
+    .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

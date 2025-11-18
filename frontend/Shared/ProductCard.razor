@@ -1,0 +1,18 @@
+@using frontend.Models
+
+<div class="product-card">
+    <img src="@Product.ImagePath" alt="@Product.Title" loading="lazy" />
+    <h3>@Product.Title</h3>
+    <p class="seller">by @Product.Seller</p>
+    <div class="rating">
+        <span class="stars" aria-label="Rating: @Product.Rating out of 5">★★★★★</span>
+        <span class="rating-value">@Product.Rating</span>
+    </div>
+    <p class="price">$@Product.Price.ToString("F2")</p>
+    <button class="add-to-cart" aria-label="Add @Product.Title to cart">Add to Cart</button>
+</div>
+
+@code {
+    [Parameter]
+    public Product Product { get; set; }
+}
