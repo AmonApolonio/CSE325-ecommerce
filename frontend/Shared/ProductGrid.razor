@@ -1,0 +1,17 @@
+@using frontend.Models
+
+<div class="product-grid">
+    <h2>Featured Products</h2>
+    <div class="grid">
+        @foreach (var product in Products)
+        {
+            <ProductCard Product="product" />
+        }
+    </div>
+    <a href="#" class="view-all" aria-label="View all products">View All →</a>
+</div>
+
+@code {
+    [Parameter]
+    public List<Product> Products { get; set; }
+}

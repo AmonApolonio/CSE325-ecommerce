@@ -1,14 +1,20 @@
 ﻿@inherits LayoutComponentBase
 <div class="page">
-    <div class="sidebar">
-        <NavMenu />
+    <div class="header">
+        <div class="logo">
+            <h1>E-commerce Store</h1>
+        </div>
+        <div class="search">
+            <input type="text" placeholder="Search products..." aria-label="Search products" />
+            <button aria-label="Search">🔍</button>
+        </div>
+        <div class="user-actions">
+            <button aria-label="Account">👤</button>
+            <button aria-label="Cart">🛒</button>
+        </div>
     </div>
 
     <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
         <article class="content px-4">
             @Body
         </article>

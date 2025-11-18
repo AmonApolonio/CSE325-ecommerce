@@ -1,14 +1,44 @@
 ﻿@page "/"
+@using frontend.Shared
+@inject frontend.Services.IProductService ProductService
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<HeroBanner />
 
-Welcome to your new app.
+@if (products != null)
+{
+    <ProductGrid Products="products" />
+}
+else
+{
+    <p>Loading products...</p>
+}
 
+<div class="categories-section">
+    <h2>Shop by Category</h2>
+    <div class="categories-grid">
+        @foreach (var category in categories)
+        {
+            <CategoryCard CategoryData="category" />
+        }
+    </div>
+</div>
+
+<Footer />
 
 @code {
-    
-    private HttpClient Http = new() { BaseAddress = new Uri("http://localhost:5028") };
+    private List<frontend.Models.Product> products;
+    private List<Shared.CategoryCard.Category> categories = new()
+    {
+        new() { Name = "Electronics", ImagePath = "images/placeholder.png" },
+        new() { Name = "Clothing", ImagePath = "images/placeholder.png" },
+        new() { Name = "Home & Kitchen", ImagePath = "images/placeholder.png" },
+        new() { Name = "Sports", ImagePath = "images/placeholder.png" }
+    };
 
+    protected override async Task OnInitializedAsync()
+    {
+        products = await ProductService.GetProductsAsync();
+    }
 }
