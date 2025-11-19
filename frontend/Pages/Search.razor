@@ -1,0 +1,157 @@
+@page "/search"
+@using frontend.Components.Product
+@using frontend.Utils
+
+@inject MockProductService ProductService
+@inject MockCartService CartService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Search - SharpCraft Shop</PageTitle>
+
+@code {
+    private List<ShoppingItem> _items = new();
+    private List<ShoppingItem> _filteredItems = new();
+    private string _searchQuery = string.Empty;
+    private bool _isLoading = true;
+
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? Query { get; set; }
+
+    [SupplyParameterFromQuery(Name = "minPrice")]
+    public decimal MinPrice { get; set; } = 0;
+
+    [SupplyParameterFromQuery(Name = "maxPrice")]
+    public decimal MaxPrice { get; set; } = 1000;
+
+    [SupplyParameterFromQuery(Name = "categories")]
+    public string Categories { get; set; } = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _items = await ProductService.GetShoppingItemsAsync();
+            
+            // Apply initial query if provided in URL
+            if (!string.IsNullOrEmpty(Query))
+            {
+                _searchQuery = Query;
+                _filteredItems = await ProductService.SearchProductsAsync(_searchQuery);
+            }
+            else
+            {
+                _filteredItems = new List<ShoppingItem>(_items);
+            }
+
+            // Apply filters
+            var filters = new SearchFilters
+            {
+                PriceRange = (MinPrice, MaxPrice),
+                SelectedCategories = Categories.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
+            };
+            _filteredItems = await ProductService.FilterProductsAsync(_filteredItems, filters);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    public async Task HandleSearch(string query)
+    {
+        _searchQuery = query;
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            _filteredItems = new List<ShoppingItem>(_items);
+        }
+        else
+        {
+            _filteredItems = await ProductService.SearchProductsAsync(query);
+        }
+
+        // Apply filters
+        var filters = new SearchFilters
+        {
+            PriceRange = (MinPrice, MaxPrice),
+            SelectedCategories = Categories.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
+        };
+        _filteredItems = await ProductService.FilterProductsAsync(_filteredItems, filters);
+
+        StateHasChanged();
+    }
+
+    private void HandleProductClick(string productId)
+    {
+        NavigationManager.NavigateTo($"/item/{productId}");
+    }
+
+    private async Task HandleToggleCart(string productId)
+    {
+        var item = _filteredItems.FirstOrDefault(i => i.Id == productId);
+        if (item != null)
+        {
+            if (item.IsAddedToCart)
+            {
+                await CartService.RemoveFromCartAsync(productId);
+            }
+            else
+            {
+                await CartService.AddToCartAsync(item);
+            }
+            item.IsAddedToCart = !item.IsAddedToCart;
+            StateHasChanged();
+        }
+    }
+}
+
+<div class="bg-white min-h-screen">
+    @* Page Title and Results Info *@
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">
+            @(string.IsNullOrEmpty(_searchQuery) ? "All Products" : $"Search Results for \"{_searchQuery}\"")
+        </h1>
+        <p class="text-gray-600 mb-8">
+            Showing @_filteredItems.Count product(s)
+        </p>
+
+        @* Loading State *@
+        @if (_isLoading)
+        {
+            <div class="flex items-center justify-center py-16">
+                <div class="text-center">
+                    <i class="fas fa-spinner fa-spin text-orange-400 text-4xl mb-4"></i>
+                    <p class="text-gray-600">Loading products...</p>
+                </div>
+            </div>
+        }
+        @* Results *@
+        else if (_filteredItems.Count > 0)
+        {
+            <ProductGrid 
+                Items="_filteredItems"
+                OnProductClick="HandleProductClick"
+                OnAddToCart="HandleToggleCart"
+                OnRemoveFromCart="HandleToggleCart"
+            />
+        }
+        @* No Results *@
+        else
+        {
+            <div class="flex flex-col items-center justify-center py-16 text-center">
+                <i class="fas fa-search text-gray-300 text-6xl mb-4"></i>
+                <p class="text-xl text-gray-600 mb-2">No products found</p>
+                <p class="text-gray-500 mb-8">Try searching for something else or browse our categories</p>
+                <a href="/">
+                    <button class="px-6 py-2 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition">
+                        Back to Home
+                    </button>
+                </a>
+            </div>
+        }
+    </div>
+</div>

@@ -20,8 +20,9 @@ html, body {
     padding: 1.25rem;
 }
 
-/* HERO BANNER - large dashed box */
-.hero-banner, .HeroBanner, .hero-banner-wrapper {
+/* HERO BANNER - wireframe placeholder styles (scoped version uses `.hero-banner` in component) */
+/* Use `.hero-banner-wrapper` for global placeholder styling so component-scoped `.hero-banner` can override */
+.hero-banner-wrapper, .HeroBanner {
     height: 190px;
     display: flex;
     align-items: center;
@@ -36,9 +37,9 @@ html, body {
     margin: 1.5rem 0;
 }
 
-.hero-banner h1, .hero-banner .title {
+.hero-banner-wrapper h1, .hero-banner-wrapper .title {
     color: #374151;
-    font-size: 1.05rem;
+    font-size: var(--font-size-2xl);
 }
 
 /* PRODUCT GRID - featured items */
@@ -138,7 +139,7 @@ html, body {
 }
 
 .product-card h3, .product-card .title {
-    font-size: 0.95rem;
+    font-size: var(--font-size-lg);
     margin: 0 0 0.35rem 0;
     color: #111827;
 }
@@ -285,10 +286,69 @@ footer .footer-inner, .footer-content {
 .view-all-link { color: var(--wire-accent); font-weight:600; }
 
 @media (max-width: 767px) {
-    .hero-banner { height: 140px; padding: 0.75rem; }
+    .hero-banner-wrapper { height: 140px; padding: 0.75rem; }
     .product-grid { grid-template-columns: repeat(2, 1fr); }
     .category-card { height: 72px; }
 }
 
 /* Ensure our overrides have enough specificity */
 body :not(style) { -webkit-font-smoothing:antialiased; }
+
+/* Enforce global component typography to inherit tokenized scale */
+.page, .header, .content, main, nav, footer, .card-component, .product-card, .category-card, .product-grid, .categories-grid, .product-card *, .category-card *, .card-component * {
+    font-family: var(--font-family-base, 'Inter'), 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+    color: inherit !important;
+}
+
+/* Ensure text sizes inside components follow the typographic scale */
+.card-component h1, .card-component h2, .card-component h3, .card-component h4, .card-component h5, .card-component h6,
+.product-card h1, .product-card h2, .product-card h3, .product-card h4, .product-card h5, .product-card h6,
+.category-card h1, .category-card h2, .category-card h3, .category-card h4, .category-card h5, .category-card h6 {
+    margin: 0 0 0.5rem 0;
+}
+
+/* Map common component headings to token sizes */
+.card-component h1, .product-card h1, .category-card h1 { font-size: var(--font-size-3xl) !important; }
+.card-component h2, .product-card h2, .category-card h2 { font-size: var(--font-size-2xl) !important; }
+.card-component h3, .product-card h3, .category-card h3 { font-size: var(--font-size-lg) !important; }
+.card-component h4, .product-card h4, .category-card h4 { font-size: var(--font-size-xl) !important; }
+
+/* Body text inside components should use base size */
+.card-component p, .product-card p, .category-card p, .card-component span, .product-card span, .category-card span {
+    font-size: var(--font-size-base) !important;
+}
+
+/* Buttons inside components follow the small size */
+.card-component .icon-button, .card-component .add-to-cart, .product-card .add-to-cart, .category-card button {
+    font-size: var(--font-size-sm) !important;
+}
+
+/* Component utilities */
+.card-component {
+    background: var(--wire-surface);
+    border: 1px solid var(--wire-border);
+    border-radius: 6px;
+    padding: 0.6rem;
+}
+.card-component .card-header {
+    margin-bottom: 0.6rem;
+}
+.card-component .card-body {
+    padding: 0;
+}
+.card-component .card-footer {
+    margin-top: 0.6rem;
+}
+
+.icon-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: var(--wire-muted);
+    color: #111827;
+}
+.icon-button .icon-button-text { font-weight: 600; }
+

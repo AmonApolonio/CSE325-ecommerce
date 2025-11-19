@@ -1,0 +1,62 @@
+@namespace frontend.Components.UI
+
+@code {
+    [Parameter]
+    public string ProductId { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool IsAddedToCart { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnAddToCart { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnRemoveFromCart { get; set; }
+
+    private bool _isLoading;
+
+    private async Task HandleAddToCart(MouseEventArgs args)
+    {
+        _isLoading = true;
+        if (IsAddedToCart)
+        {
+            await OnRemoveFromCart.InvokeAsync(ProductId);
+        }
+        else
+        {
+            await OnAddToCart.InvokeAsync(ProductId);
+        }
+        _isLoading = false;
+    }
+}
+
+<Button 
+    Variant="@(IsAddedToCart ? "outline" : "filled")"
+    Disabled="_isLoading"
+    Grow="true"
+    Class="w-full h-10 px-3 py-1"
+    StopPropagation="true"
+    OnClick="HandleAddToCart"
+>
+    @if (_isLoading)
+    {
+        <span>
+            <i class="fas fa-spinner fa-spin mr-2"></i>
+            Loading...
+        </span>
+    }
+    else if (IsAddedToCart)
+    {
+        <span>
+            <i class="fas fa-times mr-2"></i>
+            Remove from Cart
+        </span>
+    }
+    else
+    {
+        <span>
+            <i class="fas fa-shopping-cart mr-2"></i>
+            Add to Cart
+        </span>
+    }
+</Button>

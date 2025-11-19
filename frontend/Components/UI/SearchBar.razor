@@ -1,0 +1,33 @@
+@namespace frontend.Components.UI
+
+@code {
+    [Parameter]
+    public string Placeholder { get; set; } = "Search...";
+
+    [Parameter]
+    public EventCallback<string> OnSearch { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    private string _searchQuery = string.Empty;
+
+    private async Task HandleInput(ChangeEventArgs e)
+    {
+        _searchQuery = e.Value?.ToString() ?? string.Empty;
+        await OnSearch.InvokeAsync(_searchQuery);
+    }
+}
+
+<div class="relative @Class">
+    <input 
+        type="text" 
+        placeholder="@Placeholder"
+        class="w-full px-4 py-2 rounded-lg border-2 border-orange-300 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-300/50 bg-white"
+        @onchange="HandleInput"
+        value="@_searchQuery"
+    />
+    <span class="absolute right-3 top-2.5 text-gray-400">
+        <i class="fas fa-search"></i>
+    </span>
+</div>

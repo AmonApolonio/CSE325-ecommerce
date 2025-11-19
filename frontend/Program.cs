@@ -8,6 +8,11 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
-builder.Services.AddScoped<IProductService, ProductService>();
+
+// Register mock services for demo data
+builder.Services.AddScoped<MockProductService>();
+builder.Services.AddScoped<MockCategoryService>();
+builder.Services.AddScoped<MockCartService>();
+builder.Services.AddScoped<MockReviewService>();
 
 await builder.Build().RunAsync();
