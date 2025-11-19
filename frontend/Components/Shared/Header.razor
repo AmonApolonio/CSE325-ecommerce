@@ -1,0 +1,279 @@
+@namespace frontend.Components.Shared
+@using frontend.Components.UI
+@using frontend.Models
+
+@inject NavigationManager NavigationManager
+@inject MockProductService ProductService
+
+@code {
+    [Parameter]
+    public int CartItemCount { get; set; }
+
+    private bool _mobileMenuOpen;
+    private bool _filtersOpen;
+    private SearchFilters _currentFilters = new();
+    private List<string> _availableCategories = new();
+    private decimal _minPrice;
+    private decimal _maxPrice;
+
+    private void ToggleMobileMenu()
+    {
+        _mobileMenuOpen = !_mobileMenuOpen;
+    }
+
+    private void CloseMobileMenu()
+    {
+        _mobileMenuOpen = false;
+    }
+
+    private async Task OpenFilters()
+    {
+        await LoadCategories();
+        // Parse current query params
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var queryString = uri.Query;
+        var queryParams = new Dictionary<string, string>();
+        if (!string.IsNullOrEmpty(queryString))
+        {
+            var pairs = queryString.TrimStart('?').Split('&');
+            foreach (var pair in pairs)
+            {
+                var parts = pair.Split('=');
+                if (parts.Length == 2)
+                {
+                    queryParams[parts[0]] = Uri.UnescapeDataString(parts[1]);
+                }
+            }
+        }
+        _currentFilters = new SearchFilters
+        {
+            PriceRange = (decimal.TryParse(queryParams.GetValueOrDefault("minPrice", "0"), out var min) ? min : 0m, decimal.TryParse(queryParams.GetValueOrDefault("maxPrice", "1000"), out var max) ? max : 1000m),
+            SelectedCategories = queryParams.GetValueOrDefault("categories", "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
+        };
+        _minPrice = _currentFilters.PriceRange.Min;
+        _maxPrice = _currentFilters.PriceRange.Max;
+        _filtersOpen = true;
+    }
+
+    private void CloseFilters()
+    {
+        _filtersOpen = false;
+    }
+
+    private async Task LoadCategories()
+    {
+        _availableCategories = await ProductService.GetCategoriesAsync();
+    }
+
+    private void ToggleCategory(string category, bool isChecked)
+    {
+        if (isChecked)
+        {
+            if (!_currentFilters.SelectedCategories.Contains(category))
+                _currentFilters.SelectedCategories.Add(category);
+        }
+        else
+        {
+            _currentFilters.SelectedCategories.Remove(category);
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        _currentFilters.PriceRange = (_minPrice, _maxPrice);
+        var newQuery = new Dictionary<string, string>();
+        // If on search page, include q
+        if (NavigationManager.Uri.Contains("/search"))
+        {
+            var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+            var currentQueryString = uri.Query;
+            var queryParams = new Dictionary<string, string>();
+            if (!string.IsNullOrEmpty(currentQueryString))
+            {
+                var pairs = currentQueryString.TrimStart('?').Split('&');
+                foreach (var pair in pairs)
+                {
+                    var parts = pair.Split('=');
+                    if (parts.Length == 2)
+                    {
+                        queryParams[parts[0]] = Uri.UnescapeDataString(parts[1]);
+                    }
+                }
+            }
+            if (queryParams.TryGetValue("q", out var q)) newQuery["q"] = q;
+        }
+        newQuery["minPrice"] = _currentFilters.PriceRange.Min.ToString();
+        newQuery["maxPrice"] = _currentFilters.PriceRange.Max.ToString();
+        if (_currentFilters.SelectedCategories.Any()) newQuery["categories"] = string.Join(",", _currentFilters.SelectedCategories);
+        var queryString = string.Join("&", newQuery.Select(kv => $"{kv.Key}={Uri.EscapeDataString(kv.Value)}"));
+        var uriString = "/search" + (queryString.Any() ? "?" + queryString : "");
+        NavigationManager.NavigateTo(uriString);
+        CloseFilters();
+    }
+
+    private void HandleSearch(string query)
+    {
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            NavigationManager.NavigateTo($"/search?q={Uri.EscapeDataString(query)}");
+            CloseMobileMenu();
+        }
+    }
+}
+
+<header class="bg-white border-b-2 border-orange-300/50 p-4">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+        @* Logo *@
+        <div class="flex items-center flex-shrink-0">
+            <a href="/" class="flex items-center">
+                <img
+                    src="/images/icon.png"
+                    alt="SharpCraft Shop Logo"
+                    class="w-10 h-10 rounded"
+                    style="width: 40px; height: 40px;"
+                />
+                <div class="ml-1">
+                    <h1 class="text-lg md:text-xl font-bold text-gray-800">SharpCraft Shop</h1>
+                </div>
+            </a>
+        </div>
+
+        @* Hamburger button for mobile *@
+        <button
+            class="md:hidden ml-2 p-2 rounded focus:outline-none focus:ring-2 focus:ring-orange-300"
+            aria-label="Open menu"
+            @onclick="ToggleMobileMenu"
+        >
+            <svg class="h-6 w-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+        </button>
+
+        @* Search Bar and Filter (responsive) *@
+        <div class="hidden md:flex flex-1 max-w-2xl mx-8 gap-2">
+            <SearchBar
+                Placeholder="Search for handcrafted items..."
+                Class="flex-1"
+                OnSearch="HandleSearch"
+            />
+            <Button
+                Variant="filled"
+                Class="h-10 px-3 py-1"
+                Grow="true"
+                OnClick="@((MouseEventArgs e) => OpenFilters())"
+            >
+                <i class="fas fa-filter mr-2"></i>
+                Filters
+            </Button>
+        </div>
+
+        @* Account and Cart Buttons (desktop) *@
+        <div class="hidden md:flex items-center gap-3">
+            <a href="/account">
+                <Button Variant="filled" Class="h-10 px-3 py-1" Grow="true">
+                    <i class="fas fa-user mr-2"></i>
+                    My Account
+                </Button>
+            </a>
+            <a href="/cart">
+                <Button Variant="filled" Class="h-10 px-3 py-1 relative" Grow="true">
+                    <i class="fas fa-shopping-cart mr-2"></i>
+                    Cart
+                    @if (CartItemCount > 0)
+                    {
+                        <span class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
+                            @CartItemCount
+                        </span>
+                    }
+                </Button>
+            </a>
+        </div>
+    </div>
+
+    @* Mobile menu overlay *@
+    @if (_mobileMenuOpen)
+    {
+        <div class="md:hidden fixed inset-0 z-40 bg-transparent" @onclick="CloseMobileMenu"></div>
+    }
+
+    @* Mobile menu panel *@
+    <div class="md:hidden fixed inset-0 z-50 w-full h-full bg-white shadow-lg transform transition-transform duration-200 @(_mobileMenuOpen ? "translate-x-0" : "translate-x-full")" style="will-change: transform;">
+        <div class="flex items-center justify-between p-4 border-b">
+            <span class="font-bold text-lg text-gray-800">Menu</span>
+            <button
+                class="p-2 rounded focus:outline-none focus:ring-2 focus:ring-orange-300"
+                aria-label="Close menu"
+                @onclick="CloseMobileMenu"
+            >
+                <svg class="h-6 w-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div class="flex flex-col gap-4 p-4">
+            <SearchBar
+                Placeholder="Search for handcrafted items..."
+                Class="w-full"
+                OnSearch="HandleSearch"
+            />
+            <Button
+                Variant="filled"
+                Class="h-10 px-3 py-1 w-full"
+                Grow="true"
+                OnClick="@(async () => { await OpenFilters(); CloseMobileMenu(); })"
+            >
+                <i class="fas fa-filter mr-2"></i>
+                Filters
+            </Button>
+            <a href="/account" @onclick="CloseMobileMenu">
+                <Button Variant="filled" Class="h-10 px-3 py-1 w-full" Grow="true">
+                    <i class="fas fa-user mr-2"></i>
+                    My Account
+                </Button>
+            </a>
+            <a href="/cart" @onclick="CloseMobileMenu">
+                <Button Variant="filled" Class="h-10 px-3 py-1 w-full relative" Grow="true">
+                    <i class="fas fa-shopping-cart mr-2"></i>
+                    Cart
+                    @if (CartItemCount > 0)
+                    {
+                        <span class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
+                            @CartItemCount
+                        </span>
+                    }
+                </Button>
+            </a>
+        </div>
+    </div>
+
+    @* Filters modal *@
+    @if (_filtersOpen)
+    {
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" @onclick="CloseFilters">
+            <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4" @onclick:stopPropagation>
+                <h2 class="text-lg font-bold mb-4">Filters</h2>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
+                    <div class="flex gap-2">
+                        <input type="number" @bind="_minPrice" class="w-1/2 p-2 border rounded" placeholder="Min" min="0" />
+                        <input type="number" @bind="_maxPrice" class="w-1/2 p-2 border rounded" placeholder="Max" min="0" />
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Categories</label>
+                    @foreach (var category in _availableCategories)
+                    {
+                        <label class="flex items-center mb-1">
+                            <input type="checkbox" checked="@_currentFilters.SelectedCategories.Contains(category)" @onchange="(ChangeEventArgs e) => ToggleCategory(category, e.Value != null && (bool)e.Value)" class="mr-2" />
+                            @category
+                        </label>
+                    }
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button @onclick="CloseFilters" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancel</button>
+                    <button @onclick="ApplyFilters" class="px-4 py-2 bg-orange-400 text-white rounded hover:bg-orange-500">Apply</button>
+                </div>
+            </div>
+        </div>
+    }
+</header>

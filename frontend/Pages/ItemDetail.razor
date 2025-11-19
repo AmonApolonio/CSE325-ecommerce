@@ -1,0 +1,303 @@
+@page "/item/{ProductId}"
+@using frontend.Utils
+
+@inject MockProductService ProductService
+@inject MockReviewService ReviewService
+@inject MockCartService CartService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Product Details - SharpCraft Shop</PageTitle>
+
+@code {
+    [Parameter]
+    public string? ProductId { get; set; }
+
+    private ProductDetails? _product;
+    private ProductReviewsResponse? _reviews;
+    private bool _isLoading = true;
+    private string _selectedImage = string.Empty;
+    private bool _isAddedToCart = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            if (!string.IsNullOrEmpty(ProductId))
+            {
+                _product = await ProductService.GetProductDetailsAsync(ProductId);
+                _reviews = await ReviewService.GetProductReviewsAsync(ProductId);
+                
+                if (_product != null && _product.Images.Any())
+                {
+                    _selectedImage = _product.Images[0];
+                    _isAddedToCart = _product.IsAddedToCart;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading product: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task HandleAddToCart()
+    {
+        if (_product != null)
+        {
+            if (_isAddedToCart)
+            {
+                await CartService.RemoveFromCartAsync(_product.Id);
+            }
+            else
+            {
+                var shoppingItem = new ShoppingItem
+                {
+                    Id = _product.Id,
+                    ProductName = _product.Name,
+                    Price = _product.Price,
+                    ImageUrl = _product.Images.FirstOrDefault() ?? "/images/placeholder.png",
+                    SellerName = _product.Seller.Name,
+                    Rating = _product.Rating
+                };
+
+                await CartService.AddToCartAsync(shoppingItem);
+            }
+            _isAddedToCart = !_isAddedToCart;
+            StateHasChanged();
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+}
+
+@if (_isLoading)
+{
+    <div class="flex items-center justify-center py-16">
+        <div class="text-center">
+            <i class="fas fa-spinner fa-spin text-orange-400 text-4xl mb-4"></i>
+            <p class="text-gray-600">Loading product...</p>
+        </div>
+    </div>
+}
+else if (_product == null)
+{
+    <div class="text-center py-16">
+        <p class="text-gray-600 mb-4">Product not found.</p>
+        <button class="text-orange-400 hover:underline" @onclick="GoBack">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Home
+        </button>
+    </div>
+}
+else
+{
+    <div class="bg-white">
+        @* Back Button *@
+        <div class="mb-6">
+            <button class="text-orange-400 hover:underline text-lg" @onclick="GoBack">
+                <i class="fas fa-arrow-left mr-2"></i>Back
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+            @* Images Section *@
+            <div>
+                <div class="mb-4">
+                    <img
+                        src="@_selectedImage"
+                        alt="@_product.Name"
+                        class="w-full h-96 object-cover rounded-lg border-2 border-orange-300/50"
+                        style="width: 100%; height: 384px; object-fit: cover;"
+                    />
+                </div>
+                <div class="grid grid-cols-4 gap-2">
+                    @foreach (var image in _product.Images.Take(4))
+                    {
+                        <img
+                            src="@image"
+                            alt="Thumbnail"
+                            class="w-full h-20 object-cover rounded cursor-pointer border-2 @(_selectedImage == image ? "border-orange-400" : "border-orange-300/50") transition"
+                            style="width: 100%; height: 80px; object-fit: cover;"
+                            @onclick="@(() => _selectedImage = image)"
+                        />
+                    }
+                </div>
+            </div>
+
+            @* Product Info Section *@
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">@_product.Name</h1>
+                
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-star text-yellow-400"></i>
+                        <span class="text-lg font-semibold text-gray-700">@_product.Rating.ToString("0.0")</span>
+                        <span class="text-gray-500">(@_product.Reviews reviews)</span>
+                    </div>
+                </div>
+
+                <div class="mb-6 pb-6 border-b-2 border-orange-300/50">
+                    <p class="text-4xl font-bold text-orange-400">@FormatUtils.FormatCurrency(_product.Price)</p>
+                </div>
+
+                <div class="mb-6">
+                    <p class="text-gray-700 leading-relaxed">@_product.Description</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-6 pb-6 border-b-2 border-orange-300/50">
+                    <div>
+                        <p class="text-sm text-gray-500 font-semibold">Material</p>
+                        <p class="text-gray-800">@_product.Material</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 font-semibold">Capacity</p>
+                        <p class="text-gray-800">@_product.Capacity</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 font-semibold">Dimensions</p>
+                        <p class="text-gray-800">@_product.Dimensions</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 font-semibold">Care</p>
+                        <p class="text-gray-800">@_product.Care</p>
+                    </div>
+                </div>
+
+                <button 
+                    class="w-full py-3 px-4 rounded-lg font-semibold text-white transition-all @(_isAddedToCart ? "bg-gray-400 hover:bg-gray-500" : "bg-orange-400 hover:bg-orange-500")"
+                    @onclick="HandleAddToCart"
+                >
+                    @if (_isAddedToCart)
+                    {
+                        <span><i class="fas fa-times mr-2"></i>Remove from Cart</span>
+                    }
+                    else
+                    {
+                        <span><i class="fas fa-shopping-cart mr-2"></i>Add to Cart</span>
+                    }
+                </button>
+            </div>
+        </div>
+
+        @* Seller Info Section *@
+        <div class="mb-12 pb-12 border-b-2 border-orange-300/50">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">About the Seller</h2>
+            <div class="bg-orange-50 border-2 border-orange-300/50 rounded-lg p-6 flex gap-6 items-start">
+                @if (!string.IsNullOrEmpty(_product.Seller.ProfileImageUrl))
+                {
+                    <img
+                        src="@_product.Seller.ProfileImageUrl"
+                        alt="@_product.Seller.Name"
+                        class="w-16 h-16 rounded-full object-cover"
+                        style="width: 64px; height: 64px; object-fit: cover;"
+                    />
+                }
+                <div class="flex-1">
+                    <h3 class="text-xl font-bold text-gray-800">@_product.Seller.Name</h3>
+                    <p class="text-gray-600 mb-2">Member since @_product.Seller.MemberSince</p>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-1">
+                            <i class="fas fa-star text-yellow-400"></i>
+                            <span class="font-semibold">@_product.Seller.Rating.ToString("0.0")</span>
+                        </div>
+                        <span class="text-gray-600">@_product.Seller.ReviewCount reviews</span>
+                    </div>
+                </div>
+                <a href="/seller/@_product.Seller.Name" class="text-orange-400 hover:underline whitespace-nowrap">
+                    View Shop <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+        </div>
+
+        @* Reviews Section *@
+        @if (_reviews != null)
+        {
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Customer Reviews</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                    @* Rating Summary *@
+                    <div class="bg-orange-50 border-2 border-orange-300/50 rounded-lg p-6">
+                        <p class="text-5xl font-bold text-orange-400 mb-2">@_reviews.RatingBreakdown.AverageRating.ToString("0.0")</p>
+                        <div class="flex gap-1 mb-4">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                @if (i <= (int)Math.Round(_reviews.RatingBreakdown.AverageRating))
+                                {
+                                    <i class="fas fa-star text-yellow-400"></i>
+                                }
+                                else
+                                {
+                                    <i class="far fa-star text-yellow-300"></i>
+                                }
+                            }
+                        </div>
+                        <p class="text-gray-600">Based on @_reviews.RatingBreakdown.TotalReviews reviews</p>
+                    </div>
+
+                    @* Rating Breakdown *@
+                    <div class="md:col-span-2">
+                        @foreach (var rating in new[] { 5, 4, 3, 2, 1 })
+                        {
+                            var count = _reviews.RatingBreakdown.RatingsCount.ContainsKey(rating) ? _reviews.RatingBreakdown.RatingsCount[rating] : 0;
+                            var percentage = _reviews.RatingBreakdown.TotalReviews > 0 ? (count * 100 / _reviews.RatingBreakdown.TotalReviews) : 0;
+
+                            <div class="flex items-center gap-3 mb-3">
+                                <span class="text-sm text-gray-600 w-12">@rating★</span>
+                                <div class="flex-1 h-2 bg-orange-200 rounded-full overflow-hidden">
+                                    <div class="h-full bg-orange-400" style="width: @percentage%"></div>
+                                </div>
+                                <span class="text-sm text-gray-600">@count</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* Individual Reviews *@
+                <div class="space-y-6">
+                    @foreach (var review in _reviews.Reviews)
+                    {
+                        <div class="border-b-2 border-orange-300/50 pb-6">
+                            <div class="flex items-start gap-4 mb-3">
+                                @if (!string.IsNullOrEmpty(review.ReviewerProfileImageUrl))
+                                {
+                                    <img
+                                        src="@review.ReviewerProfileImageUrl"
+                                        alt="@review.ReviewerName"
+                                        class="w-12 h-12 rounded-full object-cover"
+                                        style="width: 48px; height: 48px; object-fit: cover;"
+                                    />
+                                }
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-gray-800">@review.ReviewerName</h4>
+                                    <p class="text-sm text-gray-500">@review.ReviewDate</p>
+                                </div>
+                                <div class="flex gap-1">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        @if (i <= review.Rating)
+                                        {
+                                            <i class="fas fa-star text-yellow-400 text-sm"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="far fa-star text-yellow-300 text-sm"></i>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                            <p class="text-gray-700">@review.ReviewText</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}

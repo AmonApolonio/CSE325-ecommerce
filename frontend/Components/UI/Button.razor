@@ -1,0 +1,61 @@
+@namespace frontend.Components.UI
+
+@code {
+    /// <summary>
+    /// Button variants: outline, link, outline-filled, filled
+    /// </summary>
+    [Parameter]
+    public string Variant { get; set; } = "filled";
+
+    /// <summary>
+    /// Whether the button should grow on hover
+    /// </summary>
+    [Parameter]
+    public bool Grow { get; set; }
+
+    /// <summary>
+    /// Whether the button is disabled
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    [Parameter]
+    public bool StopPropagation { get; set; } = false;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string GetVariantClass() => Variant switch
+    {
+        "outline" => "border border-orange-300 bg-transparent rounded-lg text-gray-600 hover:bg-orange-50",
+        "link" => "text-orange-400 rounded-lg hover:underline",
+        "outline-filled" => "w-full py-2 rounded-lg border border-orange-300/50 bg-orange-50 text-orange-400 text-sm font-bold hover:bg-orange-100",
+        "filled" => "border border-orange-300 bg-orange-400/70 text-white rounded-lg hover:bg-orange-400/90",
+        _ => ""
+    };
+
+    private string GetGrowClass() => !Disabled && Grow ? "hover:scale-105 transition-transform" : "";
+
+    private string GetDisabledClass() => Disabled ? "opacity-50 cursor-not-allowed" : "";
+
+    private string GetButtonClass() => $"cursor-pointer {GetVariantClass()} {GetGrowClass()} {GetDisabledClass()} {Class}";
+}
+
+@if (StopPropagation)
+{
+    <button class="@GetButtonClass()" disabled="@Disabled" @onclick="OnClick" @onclick:stopPropagation>
+        @ChildContent
+    </button>
+}
+else
+{
+    <button class="@GetButtonClass()" disabled="@Disabled" @onclick="OnClick">
+        @ChildContent
+    </button>
+}

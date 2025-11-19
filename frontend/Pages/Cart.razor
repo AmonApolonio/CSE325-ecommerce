@@ -1,0 +1,189 @@
+@page "/cart"
+@using frontend.Utils
+
+@inject MockCartService CartService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Shopping Cart - SharpCraft Shop</PageTitle>
+
+@code {
+    private List<CartItem> _cartItems = new();
+    private decimal _total;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            await LoadCart();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading cart: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadCart()
+    {
+        _cartItems = await CartService.GetCartItemsAsync();
+        _total = await CartService.GetCartTotalAsync();
+    }
+
+    private async Task UpdateQuantity(string productId, int newQuantity)
+    {
+        if (newQuantity < 1)
+        {
+            await RemoveItem(productId);
+        }
+        else
+        {
+            await CartService.UpdateQuantityAsync(productId, newQuantity);
+            await LoadCart();
+        }
+    }
+
+    private async Task RemoveItem(string productId)
+    {
+        await CartService.RemoveFromCartAsync(productId);
+        await LoadCart();
+    }
+
+    private void ContinueShopping()
+    {
+        NavigationManager.NavigateTo("/search");
+    }
+
+    private void Checkout()
+    {
+        // TODO: Implement checkout
+        NavigationManager.NavigateTo("/checkout");
+    }
+}
+
+<div class="bg-white">
+    <h1 class="text-3xl font-bold text-gray-800 mb-8">Shopping Cart</h1>
+
+    @if (_isLoading)
+    {
+        <div class="flex items-center justify-center py-16">
+            <div class="text-center">
+                <i class="fas fa-spinner fa-spin text-orange-400 text-4xl mb-4"></i>
+                <p class="text-gray-600">Loading cart...</p>
+            </div>
+        </div>
+    }
+    else if (!_cartItems.Any())
+    {
+        <div class="text-center py-16">
+            <i class="fas fa-shopping-cart text-gray-300 text-6xl mb-4"></i>
+            <p class="text-gray-600 mb-6 text-lg">Your cart is empty</p>
+            <button 
+                class="inline-flex items-center px-6 py-3 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition"
+                @onclick="ContinueShopping"
+            >
+                <i class="fas fa-arrow-left mr-2"></i>Continue Shopping
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            @* Cart Items *@
+            <div class="lg:col-span-2">
+                <div class="space-y-4">
+                    @foreach (var item in _cartItems)
+                    {
+                        <div class="bg-orange-50 border-2 border-orange-300/50 rounded-lg p-6 flex gap-4">
+                            <img
+                                src="@item.Product.ImageUrl"
+                                alt="@item.Product.ProductName"
+                                class="w-24 h-24 object-cover rounded"
+                                style="width: 96px; height: 96px; object-fit: cover;"
+                            />
+                            <div class="flex-1">
+                                <h3 class="text-lg font-semibold text-gray-800">@item.Product.ProductName</h3>
+                                <p class="text-sm text-gray-600 mb-2">by @item.Product.SellerName</p>
+                                <p class="text-orange-400 font-semibold">@FormatUtils.FormatCurrency(item.Product.Price)</p>
+                            </div>
+                            <div class="flex flex-col items-end gap-3">
+                                <div class="flex items-center border-2 border-orange-300 rounded-lg">
+                                    <button 
+                                        class="px-3 py-1 hover:bg-orange-100"
+                                        @onclick="@(async () => await UpdateQuantity(item.Product.Id, item.Quantity - 1))"
+                                    >
+                                        <i class="fas fa-minus text-sm"></i>
+                                    </button>
+                                    <input 
+                                        type="number" 
+                                        value="@item.Quantity"
+                                        class="w-12 text-center border-x-2 border-orange-300 focus:outline-none"
+                                        @onchange="@((ChangeEventArgs e) => UpdateQuantity(item.Product.Id, int.Parse(e.Value?.ToString() ?? "1")))"
+                                    />
+                                    <button 
+                                        class="px-3 py-1 hover:bg-orange-100"
+                                        @onclick="@(async () => await UpdateQuantity(item.Product.Id, item.Quantity + 1))"
+                                    >
+                                        <i class="fas fa-plus text-sm"></i>
+                                    </button>
+                                </div>
+                                <p class="font-semibold text-gray-800">@FormatUtils.FormatCurrency(item.Product.Price * item.Quantity)</p>
+                                <button 
+                                    class="text-red-500 hover:text-red-700 text-sm"
+                                    @onclick="@(async () => await RemoveItem(item.Product.Id))"
+                                >
+                                    <i class="fas fa-trash mr-1"></i>Remove
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @* Cart Summary *@
+            <div class="lg:col-span-1">
+                <div class="bg-orange-50 border-2 border-orange-300/50 rounded-lg p-6 sticky top-24">
+                    <h2 class="text-xl font-bold text-gray-800 mb-6">Order Summary</h2>
+                    
+                    <div class="space-y-3 mb-6 pb-6 border-b-2 border-orange-300">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Subtotal</span>
+                            <span class="font-semibold">@FormatUtils.FormatCurrency(_total)</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Shipping</span>
+                            <span class="font-semibold">FREE</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Tax</span>
+                            <span class="font-semibold">@FormatUtils.FormatCurrency(_total * 0.08m)</span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between mb-6 text-lg">
+                        <span class="font-bold">Total</span>
+                        <span class="text-2xl font-bold text-orange-400">@FormatUtils.FormatCurrency(_total * 1.08m)</span>
+                    </div>
+
+                    <button 
+                        class="w-full py-3 px-4 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 transition mb-3"
+                        @onclick="Checkout"
+                    >
+                        <i class="fas fa-credit-card mr-2"></i>Proceed to Checkout
+                    </button>
+
+                    <button 
+                        class="w-full py-3 px-4 border-2 border-orange-400 text-orange-400 font-semibold rounded-lg hover:bg-orange-50 transition"
+                        @onclick="ContinueShopping"
+                    >
+                        <i class="fas fa-arrow-left mr-2"></i>Continue Shopping
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>

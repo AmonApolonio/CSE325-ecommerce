@@ -1,0 +1,56 @@
+[
+  {
+    "id": 1,
+    "title": "Wireless Bluetooth Headphones",
+    "seller": "TechStore",
+    "price": 79.99,
+    "rating": 4.5,
+    "imagePath": "images/placeholder.png",
+    "category": "Electronics"
+  },
+  {
+    "id": 2,
+    "title": "Organic Cotton T-Shirt",
+    "seller": "FashionHub",
+    "price": 24.99,
+    "rating": 4.2,
+    "imagePath": "images/placeholder.png",
+    "category": "Clothing"
+  },
+  {
+    "id": 3,
+    "title": "Stainless Steel Water Bottle",
+    "seller": "HomeGoods",
+    "price": 19.99,
+    "rating": 4.7,
+    "imagePath": "images/placeholder.png",
+    "category": "Home & Kitchen"
+  },
+  {
+    "id": 4,
+    "title": "Running Shoes",
+    "seller": "SportsPro",
+    "price": 129.99,
+    "rating": 4.3,
+    "imagePath": "images/placeholder.png",
+    "category": "Sports"
+  },
+  {
+    "id": 5,
+    "title": "Smartphone Case",
+    "seller": "GadgetWorld",
+    "price": 14.99,
+    "rating": 4.0,
+    "imagePath": "images/placeholder.png",
+    "category": "Accessories"
+  },
+  {
+    "id": 6,
+    "title": "Coffee Maker",
+    "seller": "KitchenEssentials",
+    "price": 89.99,
+    "rating": 4.6,
+    "imagePath": "images/placeholder.png",
+    "category": "Home & Kitchen"
+  }
+]
