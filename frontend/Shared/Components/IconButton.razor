@@ -1,0 +1,19 @@
+@using Microsoft.AspNetCore.Components.Web
+<button class="icon-button @AdditionalClasses" @onclick="OnClick" aria-label="@AriaLabel">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <i class="@Icon" aria-hidden="true"></i>
+    }
+    @if (!string.IsNullOrEmpty(Text))
+    {
+        <span class="icon-button-text">@Text</span>
+    }
+</button>
+
+@code {
+    [Parameter] public string Icon { get; set; }
+    [Parameter] public string Text { get; set; }
+    [Parameter] public string AdditionalClasses { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    [Parameter] public string AriaLabel { get; set; }
+}

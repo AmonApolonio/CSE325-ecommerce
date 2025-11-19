@@ -1,22 +1,6 @@
 ﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="header">
-        <div class="logo">
-            <h1>E-commerce Store</h1>
-        </div>
-        <div class="search">
-            <input type="text" placeholder="Search products..." aria-label="Search products" />
-            <button aria-label="Search">🔍</button>
-        </div>
-        <div class="user-actions">
-            <button aria-label="Account">👤</button>
-            <button aria-label="Cart">🛒</button>
-        </div>
-    </div>
+@using frontend.Components.Shared
 
-    <main>
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+<Layout CartItemCount="0">
+    @Body
+</Layout>
