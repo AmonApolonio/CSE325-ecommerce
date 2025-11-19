@@ -276,7 +276,7 @@ namespace backend.Data
 
                 // --- 1. APAGAR E RECONSTRUIR DB (Conforme solicitado) ---
                 // ATENÇÃO: Use apenas em ambiente de Desenvolvimento/Testes!
-                context.Database.EnsureDeleted(); 
+                //context.Database.EnsureDeleted(); 
                 context.Database.EnsureCreated(); 
                 
                 // --- 2. SEEDING DE DADOS ---

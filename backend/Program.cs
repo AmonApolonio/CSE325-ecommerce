@@ -47,8 +47,8 @@ if (app.Environment.IsDevelopment())
         try
         {
             // O Initialize contém o EnsureDeleted() e EnsureCreated()
-            SeedData.Initialize(services); 
-            Console.WriteLine("✅ Seed Data executado com sucesso: base de dados reconstruída e preenchida.");
+            //SeedData.Initialize(services); 
+            //Console.WriteLine("✅ Seed Data executado com sucesso: base de dados reconstruída e preenchida.");
         }
         catch (Exception ex)
         {
