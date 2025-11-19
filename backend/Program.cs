@@ -1,9 +1,38 @@
 // Program.cs
 using Microsoft.EntityFrameworkCore;
 using backend.Data.Entities;
-using backend.Data;
+using Microsoft.AspNetCore.Authentication.Cookies;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        // Nome do cookie que ficará no navegador
+        options.Cookie.Name = "MeuApp.Auth"; 
+        
+        // SEGURANÇA MÁXIMA: Impede que o JS leia o cookie (Proteção XSS)
+        options.Cookie.HttpOnly = true; 
+        
+        // Só envia em conexões HTTPS
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always; 
+        
+        // Protege contra ataques de falsificação de requisição (CSRF)
+        // Use 'Strict' se Frontend e Backend estiverem no mesmo domínio exato
+        // Use 'Lax' se houver navegação entre subdomínios
+        options.Cookie.SameSite = SameSiteMode.Strict; 
+        
+        // Tempo de vida da sessão
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true; // Renova o tempo se o usuário estiver ativo
+
+        // O que acontece se tentar acessar sem logar? (Retorna 401 em vez de redirecionar para página HTML)
+        options.Events.OnRedirectToLogin = context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        };
+    });
 
 // Add services to the container.
 
@@ -34,6 +63,8 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+app.UseAuthentication();
+app.UseAuthorization();
 
 // =======================================================
 //Call SeedData on initialization***
