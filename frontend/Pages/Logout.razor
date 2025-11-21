@@ -1,4 +1,7 @@
 @page "/logout"
+@using frontend.Services
+@using Microsoft.AspNetCore.Components.Web
+@inject IAuthService AuthService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Logout - SharpCraft Shop</PageTitle>
@@ -6,9 +9,21 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
-        // Simulate logout
-        await Task.Delay(500);
-        NavigationManager.NavigateTo("/");
+        try
+        {
+            // Call logout API
+            await AuthService.LogoutAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during logout: {ex.Message}");
+        }
+        finally
+        {
+            // Navigate home after logout
+            await Task.Delay(500);
+            NavigationManager.NavigateTo("/");
+        }
     }
 }
 

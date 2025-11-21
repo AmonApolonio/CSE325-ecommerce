@@ -1,30 +1,41 @@
 ﻿@page "/"
 @using frontend.Components.Product
 @using frontend.Utils
+@using frontend.Services
+@using frontend.Models.Dtos
 
-@inject MockProductService ProductService
-@inject MockCategoryService CategoryService
-@inject MockCartService CartService
+@inject IProductService ProductService
+@inject ICategoryService CategoryService
+@inject ICartService CartService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Home - SharpCraft Shop</PageTitle>
 
 @code {
-    private List<ShoppingItem> _items = new();
-    private List<string> _categories = new();
+    private List<ProductDto> _products = new();
+    private List<CategoryDto> _categories = new();
     private bool _isLoading = true;
+    private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
         _isLoading = true;
+        _errorMessage = null;
         try
         {
-            _items = await ProductService.GetShoppingItemsAsync();
-            _categories = await CategoryService.GetCategoriesAsync();
+            // Fetch products and categories in parallel
+            var productsTask = ProductService.GetAllProductsAsync();
+            var categoriesTask = CategoryService.GetAllCategoriesAsync();
+            
+            await Task.WhenAll(productsTask, categoriesTask);
+            
+            _products = productsTask.Result;
+            _categories = categoriesTask.Result;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading data: {ex.Message}");
+            _errorMessage = $"Error loading data: {ex.Message}";
+            Console.WriteLine(_errorMessage);
         }
         finally
         {
@@ -32,33 +43,29 @@
         }
     }
 
-    private void HandleProductClick(string productId)
+    private void HandleProductClick(long productId)
     {
         NavigationManager.NavigateTo($"/item/{productId}");
     }
 
-    private async Task HandleToggleCart(string productId)
+    private async Task HandleAddToCart(long productId)
     {
-        // Find the item
-        var item = _items.FirstOrDefault(i => i.Id == productId);
-        if (item != null)
+        try
         {
-            if (item.IsAddedToCart)
-            {
-                await CartService.RemoveFromCartAsync(productId);
-            }
-            else
-            {
-                await CartService.AddToCartAsync(item);
-            }
-            item.IsAddedToCart = !item.IsAddedToCart;
-            StateHasChanged();
+            // TODO: Implement cart functionality when cart API endpoints are available
+            // For now, navigate to product details
+            HandleProductClick(productId);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error adding to cart: {ex.Message}";
+            Console.WriteLine(_errorMessage);
         }
     }
 
-    private void HandleCategoryClick(string category)
+    private void HandleCategoryClick(long categoryId)
     {
-        NavigationManager.NavigateTo($"/search?category={category}");
+        NavigationManager.NavigateTo($"/search?categoryId={categoryId}");
     }
 }
 
@@ -69,6 +76,13 @@
             <i class="fas fa-spinner fa-spin text-orange-400 text-4xl mb-4"></i>
             <p class="text-gray-600">Loading products...</p>
         </div>
+    </div>
+}
+else if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
+        <p class="font-bold">Error</p>
+        <p>@_errorMessage</p>
     </div>
 }
 else
@@ -84,36 +98,69 @@ else
             />
         </section>
 
-        @* Featured Sellers Section *@
+        @* Featured Products Section *@
         <section>
             <div class="flex items-center justify-between mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Featured Seller Items</h2>
+                <h2 class="text-2xl font-bold text-gray-800">Featured Products</h2>
             </div>
 
-            <ProductGrid 
-                Items="_items"
-                OnProductClick="HandleProductClick"
-                OnAddToCart="HandleToggleCart"
-                OnRemoveFromCart="HandleToggleCart"
-            />
+            @if (_products.Count > 0)
+            {
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    @foreach (var product in _products.Take(8))
+                    {
+                        <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg transition-shadow p-4">
+                            <div class="mb-4 h-48 bg-gray-100 rounded flex items-center justify-center">
+                                <i class="fas fa-image text-gray-300 text-4xl"></i>
+                            </div>
+                            <h3 class="font-semibold text-gray-800 mb-2">@product.Name</h3>
+                            <p class="text-sm text-gray-600 mb-3 line-clamp-2">@product.Description</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-lg font-bold text-orange-500">$@product.GetPriceAsDecimal().ToString("F2")</span>
+                                <button
+                                    @onclick="@(async () => await HandleAddToCart(product.ProductId))"
+                                    class="bg-orange-400 hover:bg-orange-500 text-white px-4 py-2 rounded transition-colors"
+                                >
+                                    View
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-8">
+                    <p class="text-gray-500">No products available</p>
+                </div>
+            }
         </section>
 
         @* Categories Section *@
         <section class="mt-12">
             <h2 class="text-2xl font-bold text-gray-800 mb-6">Shop by Category</h2>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                @foreach (var category in _categories)
-                {
-                    <div
-                        class="h-32 bg-orange-50 border-2 border-orange-300/50 border-dashed rounded-lg flex items-center justify-center transition-transform transform hover:scale-105 hover:bg-orange-300 cursor-pointer"
-                        @onclick="@(() => HandleCategoryClick(category))"
-                        role="button"
-                        tabindex="0"
-                    >
-                        <span class="font-semibold text-gray-600">@category</span>
-                    </div>
-                }
-            </div>
+            @if (_categories.Count > 0)
+            {
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    @foreach (var category in _categories)
+                    {
+                        <div
+                            class="h-32 bg-orange-50 border-2 border-orange-300/50 border-dashed rounded-lg flex items-center justify-center transition-transform transform hover:scale-105 hover:bg-orange-300 cursor-pointer"
+                            @onclick="@(() => HandleCategoryClick(category.CategoryId))"
+                            role="button"
+                            tabindex="0"
+                        >
+                            <span class="font-semibold text-gray-600 text-center px-2">@category.Name</span>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-8">
+                    <p class="text-gray-500">No categories available</p>
+                </div>
+            }
         </section>
     </div>
 }

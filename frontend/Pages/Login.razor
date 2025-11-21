@@ -1,16 +1,51 @@
 @page "/login"
+@using frontend.Services
+@using Microsoft.AspNetCore.Components.Web
+@inject IAuthService AuthService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Login - SharpCraft Shop</PageTitle>
 
 @code {
-    private string _email = string.Empty;
-    private string _password = string.Empty;
+    private string _usuario = string.Empty;
+    private string _senha = string.Empty;
+    private bool _isLoading = false;
+    private string? _errorMessage;
 
-    private void HandleLogin()
+    private async Task HandleLogin()
     {
-        // TODO: Implement actual authentication
-        NavigationManager.NavigateTo("/account");
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_usuario) || string.IsNullOrWhiteSpace(_senha))
+            {
+                _errorMessage = "Please enter both username and password";
+                return;
+            }
+
+            var result = await AuthService.LoginAsync(_usuario, _senha);
+
+            if (result != null && !string.IsNullOrEmpty(result.Token))
+            {
+                // Login successful - navigate to home or account page
+                NavigationManager.NavigateTo("/");
+            }
+            else
+            {
+                _errorMessage = result?.Message ?? "Login failed. Please check your credentials.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Login error: {ex.Message}";
+            Console.WriteLine(_errorMessage);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 }
 
@@ -20,14 +55,23 @@
             <h1 class="text-3xl font-bold text-gray-800 text-center mb-2">SharpCraft Shop</h1>
             <p class="text-gray-600 text-center mb-8">Sign in to your account</p>
 
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="mb-4 p-3 bg-red-100 border-l-4 border-red-500 text-red-700">
+                    <p class="font-semibold">Error</p>
+                    <p>@_errorMessage</p>
+                </div>
+            }
+
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm text-gray-600 font-semibold mb-2">Email</label>
+                    <label class="block text-sm text-gray-600 font-semibold mb-2">Username</label>
                     <input 
-                        type="email" 
-                        placeholder="you@example.com"
+                        type="text" 
+                        placeholder="Enter your username"
                         class="w-full px-4 py-2 rounded-lg border-2 border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300/50"
-                        @bind="_email"
+                        @bind="_usuario"
+                        disabled="@_isLoading"
                     />
                 </div>
 
@@ -37,23 +81,31 @@
                         type="password" 
                         placeholder="••••••••"
                         class="w-full px-4 py-2 rounded-lg border-2 border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300/50"
-                        @bind="_password"
+                        @bind="_senha"
+                        disabled="@_isLoading"
                     />
                 </div>
 
                 <div class="flex items-center justify-between">
                     <label class="flex items-center">
-                        <input type="checkbox" class="w-4 h-4 rounded" />
+                        <input type="checkbox" class="w-4 h-4 rounded" disabled="@_isLoading" />
                         <span class="ml-2 text-sm text-gray-600">Remember me</span>
                     </label>
-                    <a href="#" class="text-sm text-orange-400 hover:underline">Forgot password?</a>
                 </div>
 
                 <button 
-                    class="w-full py-3 px-4 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 transition"
+                    class="w-full py-3 px-4 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                     @onclick="HandleLogin"
+                    disabled="@_isLoading"
                 >
-                    <i class="fas fa-sign-in-alt mr-2"></i>Sign In
+                    @if (_isLoading)
+                    {
+                        <span><i class="fas fa-spinner fa-spin mr-2"></i>Signing in...</span>
+                    }
+                    else
+                    {
+                        <span><i class="fas fa-sign-in-alt mr-2"></i>Sign In</span>
+                    }
                 </button>
             </div>
 
