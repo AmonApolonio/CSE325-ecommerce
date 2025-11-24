@@ -1,56 +1,4 @@
 @page "/login"
-<<<<<<< HEAD
-@inject HttpClient Http
-@inject NavigationManager Navigation
-
-namespace cse325_ecommerce.
-@using cse325_ecommerce.Shared
-
-<h3>Acesso ao Sistema</h3>
-
-<EditForm Model="@loginModel" OnValidSubmit="RealizarLogin">
-    <DataAnnotationsValidator />
-
-    <div class="mb-3">
-        <label>Usuário:</label>
-        <InputText @bind-Value="loginModel.Usuario" class="form-control" />
-    </div>
-
-    <div class="mb-3">
-        <label>Senha:</label>
-        <InputText @bind-Value="loginModel.Senha" type="password" class="form-control" />
-    </div>
-
-    <button type="submit" class="btn btn-primary">Entrar</button>
-    
-    @if (!string.IsNullOrEmpty(mensagemErro))
-    {
-        <div class="alert alert-danger mt-2">@mensagemErro</div>
-    }
-</EditForm>
-
-@code {
-    // 1. O Modelo é C# puro (o mesmo usado no Backend)
-    private LoginModel loginModel = new LoginModel();
-    private string mensagemErro;
-
-    private async Task RealizarLogin()
-    {
-        // 2. Faz a chamada POST para o seu Controller
-        var resultado = await Http.PostAsJsonAsync("api/auth/login", loginModel);
-
-        if (resultado.IsSuccessStatusCode)
-        {
-
-            Navigation.NavigateTo("/", forceLoad: true);
-        }
-        else
-        {
-            mensagemErro = "Usuário ou senha inválidos!";
-        }
-    }
-}
-=======
 @inject NavigationManager NavigationManager
 
 <PageTitle>Login - SharpCraft Shop</PageTitle>
@@ -118,4 +66,3 @@ namespace cse325_ecommerce.
         </div>
     </div>
 </div>
->>>>>>> 642b06d (feat: initial frontend screens using mockup data)
