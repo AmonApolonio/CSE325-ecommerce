@@ -1,60 +1,58 @@
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
+using backend.Data.Entities; // Para acessar AppDbContext, Client, Seller
+// Usings para os Models LoginRequest e LoginResponse
+// Usings para ITokenService
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
-namespace SeuProjeto.Controllers // <--- IMPORTANTE: Ajuste para o namespace do seu projeto
+[Route("api/[controller]")]
+[ApiController]
+public class AuthController : ControllerBase
 {
-    [Route("api/[controller]")] // A rota será: seusever.com/api/auth
-    [ApiController]
-    public class AuthController : ControllerBase
+    private readonly AppDbContext _context;
+    private readonly ITokenService _tokenService;
+
+    public AuthController(AppDbContext context, ITokenService tokenService)
     {
-        [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginModel login)
-        {
-            // 1. Validação (Simulação - aqui você consultaria seu Banco de Dados)
-            if (login.Usuario != "admin" || login.Senha != "1234")
-                return Unauthorized(new { message = "Usuário ou senha inválidos" });
-
-            // 2. Criar a Identidade do Usuário (Claims)
-            // Claims são dados que você quer deixar "tatuados" no cookie (Id, Nome, Permissões)
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, login.Usuario),
-                new Claim(ClaimTypes.Role, "Admin"), 
-                new Claim("IdInterno", "99") // Exemplo de dado customizado
-            };
-
-            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-
-            var authProperties = new AuthenticationProperties
-            {
-                IsPersistent = true, // Mantém logado mesmo fechando o navegador
-                ExpiresUtc = DateTime.UtcNow.AddHours(8) // O cookie expira em 8 horas
-            };
-
-            // 3. Cria o Cookie criptografado e anexa na resposta
-            await HttpContext.SignInAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(claimsIdentity),
-                authProperties);
-
-            return Ok(new { message = "Login realizado com sucesso! Cookie criado." });
-        }
-
-        [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
-        {
-            // Remove o cookie do navegador
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return Ok(new { message = "Deslogado com sucesso" });
-        }
+        _context = context;
+        _tokenService = tokenService;
     }
 
-    // Esta classe serve apenas para receber os dados do JSON
-    public class LoginModel
+    [HttpPost("login")]
+    [AllowAnonymous] // Este endpoint deve ser acessível por qualquer um
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        public string Usuario { get; set; }
-        public string Senha { get; set; }
+        // 1. Verificar Client
+        var client = await _context.Clients.FirstOrDefaultAsync(c => c.Email == request.Email);
+        
+        if (client != null && VerifyPasswordHash(request.Password, client.PasswordHash))
+        {
+            var token = _tokenService.GenerateToken(client.Email, "client");
+            return Ok(new LoginResponse { Token = token, Email = client.Email, Role = "client" });
+        }
+
+        // 2. Verificar Seller
+        var seller = await _context.Sellers.FirstOrDefaultAsync(s => s.Email == request.Email);
+
+        if (seller != null && VerifyPasswordHash(request.Password, seller.PasswordHash))
+        {
+            var token = _tokenService.GenerateToken(seller.Email, "seller");
+            return Ok(new LoginResponse { Token = token, Email = seller.Email, Role = "seller" });
+        }
+
+        // Falha na autenticação
+        return Unauthorized(new { Message = "Credenciais inválidas." });
+    }
+
+    // ⚠️ ATENÇÃO: Você precisa implementar uma função segura de verificação de hash
+    private bool VerifyPasswordHash(string password, string storedHash)
+    {
+        // **IMPORTANTE**: Use uma biblioteca robusta como BCrypt.Net ou Argon2. 
+        // Nunca use hashing simples como SHA256 ou métodos obsoletos.
+        
+        // Exemplo: return BCrypt.Net.BCrypt.Verify(password, storedHash);
+        
+        // Substitua esta linha pela sua lógica real de verificação de hash segura!
+        return false; 
     }
 }

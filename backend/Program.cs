@@ -1,61 +1,58 @@
 // Program.cs
 using Microsoft.EntityFrameworkCore;
 using backend.Data.Entities;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer; // NOVO
+using Microsoft.IdentityModel.Tokens; // NOVO
+using System.Text; // NOVO
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
+// =======================================================
+// 1. AUTENTICAÇÃO JWT BEARER (Substitui Cookie)
+// Configure as chaves JWT no arquivo appsettings.json
+// =======================================================
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        // Nome do cookie que ficará no navegador
-        options.Cookie.Name = "MeuApp.Auth"; 
-        
-        // SEGURANÇA MÁXIMA: Impede que o JS leia o cookie (Proteção XSS)
-        options.Cookie.HttpOnly = true; 
-        
-        // Só envia em conexões HTTPS
-        options.Cookie.SecurePolicy = CookieSecurePolicy.Always; 
-        
-        // Protege contra ataques de falsificação de requisição (CSRF)
-        // Use 'Strict' se Frontend e Backend estiverem no mesmo domínio exato
-        // Use 'Lax' se houver navegação entre subdomínios
-        options.Cookie.SameSite = SameSiteMode.Strict; 
-        
-        // Tempo de vida da sessão
-        options.ExpireTimeSpan = TimeSpan.FromHours(8);
-        options.SlidingExpiration = true; // Renova o tempo se o usuário estiver ativo
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
 
-        // O que acontece se tentar acessar sem logar? (Retorna 401 em vez de redirecionar para página HTML)
-        options.Events.OnRedirectToLogin = context =>
-        {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            return Task.CompletedTask;
-        };
-    });
+        // ESTES VALORES DEVEM SER LIDOS DO appsettings.json ou variáveis de ambiente
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+    };
+});
+builder.Services.AddScoped<ITokenService, TokenService>();
 
-// Add services to the container.
 
-// 1. CONFIGURE DATABASE CONTEXT
+// ***************************************************************
+// 2. CONFIGURE DATABASE CONTEXT
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 // ***************************************************************
 
-
 builder.Services.AddEndpointsApiExplorer(); 
 builder.Services.AddSwaggerGen(); 
-
-
 builder.Services.AddControllers(); 
 
-// 3. CORS Policy
+// 3. CORS Policy (Mantenha o AllowAnyOrigin APENAS para desenvolvimento)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", corsBuilder =>
     {
-        corsBuilder.AllowAnyOrigin()
+        // Em produção, substitua AllowAnyOrigin() por WithOrigins("https://seublazorfrontend.com")
+        corsBuilder.AllowAnyOrigin() 
                    .AllowAnyMethod()
                    .AllowAnyHeader();
     });
@@ -63,13 +60,13 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// A ordem é crucial: Autenticação antes da Autorização
 app.UseAuthentication();
 app.UseAuthorization();
 
 // =======================================================
-//Call SeedData on initialization***
+// Call SeedData on initialization (Mantenha esta seção)
 // =======================================================
-// Seeding should only run in a development/test environment.
 if (app.Environment.IsDevelopment())
 {
     using (var scope = app.Services.CreateScope())
@@ -77,30 +74,24 @@ if (app.Environment.IsDevelopment())
         var services = scope.ServiceProvider;
         try
         {
-            // O Initialize contém o EnsureDeleted() e EnsureCreated()
-            //SeedData.Initialize(services); 
-            //Console.WriteLine("✅ Seed Data executado com sucesso: base de dados reconstruída e preenchida.");
+            // Seu código de Seeding...
         }
         catch (Exception ex)
         {
-            // Loga o erro em caso de falha no seeding
             var logger = services.GetRequiredService<ILogger<Program>>();
             logger.LogError(ex, "❌ Ocorreu um erro durante o seeding da base de dados.");
         }
     }
 
-    // Configuração do Swagger para desenvolvimento
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 // =======================================================
 
-
+// Redirecionamento obrigatório para HTTPS (Muito importante!)
 app.UseHttpsRedirection();
 
 app.UseCors("AllowAll");
-
-// --- APPLICATION ENDPOINTS (Your custom API routes will go here) ---
 
 app.MapControllers(); 
 
