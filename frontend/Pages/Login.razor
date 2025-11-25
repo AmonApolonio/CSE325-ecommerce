@@ -1,18 +1,44 @@
 @page "/login"
 @inject NavigationManager NavigationManager
 
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+
+@inject CustomAuthStateProvider AuthStateProvider
+
 <PageTitle>Login - SharpCraft Shop</PageTitle>
+
 
 @code {
     private string _email = string.Empty;
     private string _password = string.Empty;
+    private string _errorMessage = string.Empty;
 
-    private void HandleLogin()
+    
+private async Task HandleLogin()
+{
+    var request = new LoginRequest { Email = _email, Password = _password };
+    var response = await Http.PostAsJsonAsync("api/auth/login", request);
+
+    if (response.IsSuccessStatusCode)
     {
-        // TODO: Implement actual authentication
+        var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>();
+
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "authToken", loginResponse.Token);
+
+        AuthStateProvider.MarkUserAsAuthenticated(loginResponse.Token);
+
         NavigationManager.NavigateTo("/account");
     }
+    else
+    {
+        _errorMessage = "Credenciais inválidas.";
+    }
 }
+    
+    
+}
+
 
 <div class="min-h-screen bg-white flex items-center justify-center py-12 px-4">
     <div class="w-full max-w-md">

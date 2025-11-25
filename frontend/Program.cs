@@ -4,7 +4,7 @@ using frontend;
 
 using frontend.Services;
 using Microsoft.AspNetCore.Components.Authorization;
-
+using Microsoft.JSInterop;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -16,7 +16,22 @@ builder.Services.AddScoped<MockCategoryService>();
 builder.Services.AddScoped<MockCartService>();
 builder.Services.AddScoped<MockReviewService>();
 
-// --- CONFIGURAÇÃO DE AUTENTICAÇÃO JWT ---
+
+builder.Services.AddScoped<JwtHandler>();
+builder.Services.AddScoped(sp =>
+{
+    var jsRuntime = sp.GetRequiredService<IJSRuntime>();
+    var handler = new JwtHandler(jsRuntime)
+    {
+        InnerHandler = new HttpClientHandler()
+    };
+    return new HttpClient(handler)
+    {
+        BaseAddress = new Uri("https://localhost:5028/") 
+    };
+});
+
+
 
 builder.Services.AddAuthorizationCore();
 

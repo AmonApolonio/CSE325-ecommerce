@@ -1,0 +1,121 @@
+
+@page "/signup"
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<div class="signup-form">
+    <h3>Cadastro de Usuário</h3>
+
+    <div class="form-group">
+        <label>Tipo de Usuário:</label>
+        <select @bind="userType" class="form-control">
+            <option value="">Selecione...</option>
+            <option value="Client">Cliente</option>
+            <option value="Seller">Vendedor</option>
+        </select>
+    </div>
+
+    @if (userType == "Client")
+    {
+        <h4>Dados do Cliente</h4>
+        <input class="form-control" placeholder="Nome" @bind="client.Name" />
+        <input class="form-control" placeholder="Email" @bind="client.Email" />
+        <input class="form-control" placeholder="Senha" type="password" @bind="client.PasswordHash" />
+        <input class="form-control" placeholder="Telefone" @bind="client.PhoneNumber" />
+        <input class="form-control" placeholder="Endereço 1" @bind="client.Address1" />
+        <input class="form-control" placeholder="Endereço 2" @bind="client.Address2" />
+        <input class="form-control" placeholder="Cidade" @bind="client.City" />
+        <input class="form-control" placeholder="Estado" @bind="client.State" />
+        <input class="form-control" placeholder="País" @bind="client.Country" />
+        <input class="form-control" placeholder="CEP" @bind="client.ZipCode" />
+    }
+
+    @if (userType == "Seller")
+    {
+        <h4>Dados do Vendedor</h4>
+        <input class="form-control" placeholder="Nome" @bind="seller.Name" />
+        <input class="form-control" placeholder="Email" @bind="seller.Email" />
+        <input class="form-control" placeholder="Senha" type="password" @bind="seller.PasswordHash" />
+        <input class="form-control" placeholder="Telefone" @bind="seller.PhoneNumber" />
+        <input class="form-control" placeholder="Foto (URL)" @bind="seller.PhotoUrl" />
+        <input class="form-control" placeholder="Sobre mim" @bind="seller.AboutMe" />
+        <input class="form-control" placeholder="Endereço 1" @bind="seller.Address1" />
+        <input class="form-control" placeholder="Endereço 2" @bind="seller.Address2" />
+        <input class="form-control" placeholder="Cidade" @bind="seller.City" />
+        <input class="form-control" placeholder="Estado" @bind="seller.State" />
+        <input class="form-control" placeholder="País" @bind="seller.Country" />
+        <input class="form-control" placeholder="CEP" @bind="seller.ZipCode" />
+    }
+
+    <button class="btn btn-primary mt-3" @onclick="CadastrarUsuario">Cadastrar</button>
+
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <p>@message</p>
+    }
+</div>
+
+@code {
+    private string userType = "";
+    private Client client = new();
+    private Seller seller = new();
+    private string message = "";
+
+    private async Task CadastrarUsuario()
+    {
+        if (userType == "Client")
+        {
+            client.UserId = 0; // será gerado pelo backend
+            client.Carts = new List<string>(); // não preenche no cadastro
+            var response = await Http.PostAsJsonAsync("api/Clients", client);
+            message = response.IsSuccessStatusCode ? "Cliente cadastrado com sucesso!" : "Erro ao cadastrar cliente.";
+        }
+        else if (userType == "Seller")
+        {
+            seller.SellerId = 0;
+            seller.Products = new List<string>(); // não preenche no cadastro
+            seller.CommisionRate = 3; // fixo
+            var response = await Http.PostAsJsonAsync("api/Sellers", seller);
+            message = response.IsSuccessStatusCode ? "Vendedor cadastrado com sucesso!" : "Erro ao cadastrar vendedor.";
+        }
+        else
+        {
+            message = "Selecione um tipo de usuário.";
+        }
+    }
+
+    public class Client
+    {
+        public long UserId { get; set; }
+        public string Name { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string PasswordHash { get; set; } = "";
+        public string PhoneNumber { get; set; } = "";
+        public string Address1 { get; set; } = "";
+        public string Address2 { get; set; } = "";
+        public string City { get; set; } = "";
+        public string State { get; set; } = "";
+        public string Country { get; set; } = "";
+        public string ZipCode { get; set; } = "";
+        public List<string> Carts { get; set; } = new();
+    }
+
+    public class Seller
+    {
+        public long SellerId { get; set; }
+        public string Name { get; set; } = "";
+        public string PhotoUrl { get; set; } = "";
+        public string AboutMe { get; set; } = "";
+        public string Address1 { get; set; } = "";
+        public string Address2 { get; set; } = "";
+        public string City { get; set; } = "";
+        public string State { get; set; } = "";
+        public string Country { get; set; } = "";
+        public string ZipCode { get; set; } = "";
+        public string PhoneNumber { get; set; } = "";
+        public double CommisionRate { get; set; }
+        public string Email { get; set; } = "";
+        public string PasswordHash { get; set; } = "";
+        public List<string> Products { get; set; } = new();
+    }
+}

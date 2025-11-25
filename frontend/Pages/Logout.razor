@@ -1,14 +1,22 @@
+
 @page "/logout"
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject CustomAuthStateProvider AuthStateProvider
 
 <PageTitle>Logout - SharpCraft Shop</PageTitle>
 
 @code {
     protected override async Task OnInitializedAsync()
     {
-        // Simulate logout
-        await Task.Delay(500);
-        NavigationManager.NavigateTo("/");
+        // Remove o token do localStorage
+        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "authToken");
+
+        // Atualiza o estado de autenticação
+        AuthStateProvider.MarkUserAsLoggedOut();
+
+        // Redireciona para a página de login
+        NavigationManager.NavigateTo("/login");
     }
 }
 

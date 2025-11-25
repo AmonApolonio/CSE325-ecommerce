@@ -24,18 +24,16 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
         return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(ParseClaimsFromJwt(token), "jwtAuth")));
     }
 
-    public void MarkUserAsAuthenticated(LoginResponse loginResponse)
+    
+    
+    public void MarkUserAsAuthenticated(string token)
     {
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Email, loginResponse.Email),
-            new Claim(ClaimTypes.Role, loginResponse.Role)
-        };
-        var authenticatedUser = new ClaimsPrincipal(new ClaimsIdentity(claims, "jwtAuth"));
-        
-        // Notifica o Blazor que o estado mudou
+        var identity = new ClaimsIdentity(ParseClaimsFromJwt(token), "jwtAuth");
+        var authenticatedUser = new ClaimsPrincipal(identity);
         NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(authenticatedUser)));
     }
+
+
 
     public void MarkUserAsLoggedOut()
     {
