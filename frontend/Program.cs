@@ -27,7 +27,7 @@ builder.Services.AddScoped(sp =>
     };
     return new HttpClient(handler)
     {
-        BaseAddress = new Uri("https://localhost:5028/") 
+        BaseAddress = new Uri("https://localhost:7198/") 
     };
 });
 
@@ -45,7 +45,7 @@ builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
 
 // 3. Registra o HttpClient Nomeado ("BackendApi") com o JwtHandler
 builder.Services.AddHttpClient("BackendApi", client => 
-    client.BaseAddress = new Uri("https://localhost:7128/"))
+    client.BaseAddress = new Uri("https://localhost:7198/"))
     .AddHttpMessageHandler<JwtHandler>();
 
 // 4. Registra o AuthService, garantindo que ele injete o HttpClient Nomeado

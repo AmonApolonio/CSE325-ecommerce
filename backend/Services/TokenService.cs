@@ -1,3 +1,4 @@
+
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -19,23 +20,33 @@ public class TokenService : ITokenService
 
     public string GenerateToken(string email, string role)
     {
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+        var key = _config["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is missing");
+        var issuer = _config["Jwt:Issuer"];
+        var audiences = _config.GetSection("Jwt:Audiences").Get<string[]>();
+
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-        // Claims (Informações sobre o usuário)
+        // Claims do usuário
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, email),
             new Claim(ClaimTypes.Email, email),
-            new Claim(ClaimTypes.Role, role) // O Perfil é crucial para o Authorize
+            new Claim(ClaimTypes.Role, role),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
+        // Cria o token com o primeiro audience como padrão
         var token = new JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"],
-            audience: _config["Jwt:Audience"],
+            issuer: issuer,
+            audience: audiences.FirstOrDefault(), // usa o primeiro audience
             claims: claims,
-            expires: DateTime.Now.AddHours(8), // Token expira em 8 horas
-            signingCredentials: credentials);
+            expires: DateTime.UtcNow.AddHours(8),
+            signingCredentials: credentials
+        );
+
+        // Adiciona todos os audiences no payload
+        token.Payload["aud"] = audiences;
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }

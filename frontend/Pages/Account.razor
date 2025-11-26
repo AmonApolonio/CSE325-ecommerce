@@ -1,72 +1,417 @@
 @page "/account"
+@using Microsoft.JSInterop
+@using System.Net.Http.Json
+@using System.ComponentModel.DataAnnotations
+@inject IHttpClientFactory ClientFactory
+@inject IJSRuntime JSRuntime
 
 <PageTitle>My Account - SharpCraft Shop</PageTitle>
 
 @code {
+    private bool _isLoading = true;
+    private string _role = string.Empty;
+    private string _message = string.Empty; // Mensagem de feedback
+    private bool _isError = false;
+
+    private ClientProfile _client = new();
+    private SellerProfile _seller = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try 
+        {
+            var email = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "userEmail");
+            _role = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "userRole");
+
+            if (!string.IsNullOrEmpty(email) && !string.IsNullOrEmpty(_role))
+            {
+                var httpClient = ClientFactory.CreateClient("BackendApi");
+
+                if (_role == "Client")
+                {
+                    var response = await httpClient.GetAsync($"api/Clients/by-email/{email}");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var result = await response.Content.ReadFromJsonAsync<ClientProfile>();
+                        if(result != null) _client = result;
+                    }
+                }
+                else if (_role == "Seller")
+                {
+                    var response = await httpClient.GetAsync($"api/Sellers/by-email/{email}");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var result = await response.Content.ReadFromJsonAsync<SellerProfile>();
+                        if(result != null) _seller = result;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro: {ex.Message}");
+        }
+
+        _isLoading = false;
+    }
+
+    // =================================================================
+    // SaveSeller function (AJUSTADA PARA USAR DTO)
+    // =================================================================
+    private async Task SaveSeller()
+    {
+        try
+        {
+            var httpClient = ClientFactory.CreateClient("BackendApi");
+            
+            // 1. Mapear o _seller (modelo do formulário) para o DTO de detalhes
+            var updateDto = new SellerDetailsDto
+            {
+                SellerId = _seller.SellerId, 
+                Name = _seller.Name,
+                PhotoUrl = _seller.PhotoUrl,
+                AboutMe = _seller.AboutMe,
+                PhoneNumber = _seller.PhoneNumber,
+                Address1 = _seller.Address1,
+                Address2 = _seller.Address2,
+                City = _seller.City,
+                State = _seller.State,
+                Country = _seller.Country,
+                ZipCode = _seller.ZipCode
+            };
+
+            // 2. Chamar o ENDPOINT específico para detalhes, enviando o DTO
+            // PUT: api/Sellers/details/{id}
+            var response = await httpClient.PutAsJsonAsync($"api/Sellers/details/{_seller.SellerId}", updateDto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                ShowMessage("Store profile updated successfully!", false);
+            }
+            else
+            {
+                // 🛑 Chamada de Erro
+                var errorContent = await response.Content.ReadAsStringAsync();
+                ShowMessage($"Failed to update store profile. Status code: {response.StatusCode}. Details: {errorContent}", true);
+            }
+        }
+        catch (Exception)
+        {
+            ShowMessage("An error occurred while saving the store profile.", true);
+        }
+    }
+    
+    private void ShowMessage(string msg, bool isError)
+    {
+        _message = msg;
+        _isError = isError;
+
+        // Use InvokeAsync para garantir que a atualização da interface (StateHasChanged)
+        // ocorra no contexto de sincronização correto do Blazor (UI thread).
+        InvokeAsync(() =>
+        {
+            // 1. Força a UI a mostrar a mensagem imediatamente
+            StateHasChanged(); 
+            
+            // 2. Agenda a limpeza da mensagem após 3 segundos
+            Task.Delay(3000).ContinueWith(_ => 
+            { 
+                _message = string.Empty; 
+                // 3. Garante que a limpeza também atualize a UI (já está correta)
+                InvokeAsync(StateHasChanged); 
+            });
+        });
+    }
+
+    public class ClientProfile
+    {
+        public long UserId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string Address1 { get; set; } = string.Empty;
+        public string Address2 { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string State { get; set; } = string.Empty;
+        public string Country { get; set; } = string.Empty;
+        public string ZipCode { get; set; } = string.Empty;
+    }
+
+    public class SellerProfile
+    {
+        public long SellerId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string PhotoUrl { get; set; } = string.Empty;
+        public string AboutMe { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string Address1 { get; set; } = string.Empty;
+        public string Address2 { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string State { get; set; } = string.Empty;
+        public string Country { get; set; } = string.Empty;
+        public string ZipCode { get; set; } = string.Empty;
+    }
+    
+    // =================================================================
+    // DTO for the Client PUT (MUST MATCH THE DTO IN THE BACKEND)
+    // =================================================================
+    public class ClientDetailsDto
+    {
+        public long UserId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string Address1 { get; set; } = string.Empty;
+        public string Address2 { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string State { get; set; } = string.Empty;
+        public string Country { get; set; } = string.Empty;
+        public string ZipCode { get; set; } = string.Empty;
+    }
+
+    // =================================================================
+    // DTO for the Seller PUT (ADICIONADO)
+    // =================================================================
+    public class SellerDetailsDto
+    {
+        public long SellerId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string PhotoUrl { get; set; } = string.Empty;
+        public string? AboutMe { get; set; } // Permitindo que seja opcional
+        public string? PhoneNumber { get; set; }
+        public string Address1 { get; set; } = string.Empty;
+        public string? Address2 { get; set; }
+        public string City { get; set; } = string.Empty;
+        public string State { get; set; } = string.Empty;
+        public string Country { get; set; } = string.Empty;
+        public string ZipCode { get; set; } = string.Empty;
+        // Email, CommisionRate e PasswordHash foram omitidos, pois não devem ser alterados aqui.
+    }
+    
+    // =================================================================
+    // SaveClient function
+    // =================================================================
+    private async Task SaveClient()
+    {
+        try
+        {
+            var httpClient = ClientFactory.CreateClient("BackendApi");
+            
+            // 1. Mapear o _client (modelo do formulário) para o DTO de detalhes
+            // Isso garante que não estamos enviando 'PasswordHash' ou 'Carts'
+            var updateDto = new ClientDetailsDto
+            {
+                UserId = _client.UserId, // ID é crucial para a rota
+                Name = _client.Name,
+                Email = _client.Email, // Mesmo sendo readonly no form, o DTO espera
+                PhoneNumber = _client.PhoneNumber,
+                Address1 = _client.Address1,
+                Address2 = _client.Address2,
+                City = _client.City,
+                State = _client.State,
+                Country = _client.Country,
+                ZipCode = _client.ZipCode
+            };
+
+            // 2. Chamar o NOVO ENDPOINT específico para detalhes
+            // PUT: api/Clients/details/{id}
+            var response = await httpClient.PutAsJsonAsync($"api/Clients/details/{_client.UserId}", updateDto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                ShowMessage("Profile updated successfully!", false);
+            }
+            else
+            {
+                // Tenta ler a mensagem de erro detalhada da API (útil para 400 Bad Request)
+                var errorContent = await response.Content.ReadAsStringAsync();
+                ShowMessage($"Failed to update profile. Status code: {response.StatusCode}. Details: {errorContent}", true);
+            }
+        }
+        catch (Exception)
+        {
+            ShowMessage("An error occurred while saving.", true);
+        }
+    }
 }
 
-<div class="bg-white">
+
+<div class="bg-white min-h-screen">
     <h1 class="text-3xl font-bold text-gray-800 mb-8">My Account</h1>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        @* Sidebar Menu *@
-        <div class="md:col-span-1">
-            <div class="bg-orange-50 border-2 border-orange-300/50 rounded-lg overflow-hidden">
-                <a href="/account" class="block px-6 py-3 bg-orange-400 text-white font-semibold">
-                    <i class="fas fa-user mr-2"></i>Profile
-                </a>
-                <a href="/account/orders" class="block px-6 py-3 text-gray-800 hover:bg-orange-100 transition">
-                    <i class="fas fa-box mr-2"></i>Orders
-                </a>
-                <a href="/account/wishlist" class="block px-6 py-3 text-gray-800 hover:bg-orange-100 transition">
-                    <i class="fas fa-heart mr-2"></i>Wishlist
-                </a>
-                <a href="/account/settings" class="block px-6 py-3 text-gray-800 hover:bg-orange-100 transition">
-                    <i class="fas fa-cog mr-2"></i>Settings
-                </a>
-                <a href="/logout" class="block px-6 py-3 text-gray-800 hover:bg-red-100 transition border-t-2 border-orange-300/50">
-                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                </a>
+    @if (_isLoading)
+    {
+        <p>Loading...</p>
+    }
+    else
+    {
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="md:col-span-1">
+                <div class="bg-orange-50 border-2 border-orange-300/50 rounded-lg overflow-hidden flex flex-col">
+                    <a href="/account" class="p-3 bg-orange-200 text-gray-800 font-bold">
+                        <i class="fas fa-user mr-2"></i>Profile
+                    </a>
+                    <a href="/account/orders" class="p-3 hover:bg-orange-100 text-gray-700">
+                        <i class="fas fa-box mr-2"></i>Orders
+                    </a>
+                    <a href="/account/wishlist" class="p-3 hover:bg-orange-100 text-gray-700">
+                        <i class="fas fa-heart mr-2"></i>Wishlist
+                    </a>
+                    <a href="/account/settings" class="p-3 hover:bg-orange-100 text-gray-700">
+                        <i class="fas fa-cog mr-2"></i>Settings
+                    </a>
+                    <a href="/logout" class="p-3 hover:bg-orange-100 text-gray-700">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </a>
+                </div>
             </div>
-        </div>
 
-        @* Profile Section *@
-        <div class="md:col-span-2">
-            <div class="bg-orange-50 border-2 border-orange-300/50 rounded-lg p-8">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Profile Information</h2>
-                
-                <div class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm text-gray-600 font-semibold mb-2">First Name</label>
-                            <input type="text" placeholder="John" class="w-full px-4 py-2 rounded-lg border-2 border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300/50" />
-                        </div>
-                        <div>
-                            <label class="block text-sm text-gray-600 font-semibold mb-2">Last Name</label>
-                            <input type="text" placeholder="Doe" class="w-full px-4 py-2 rounded-lg border-2 border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300/50" />
-                        </div>
+            <div class="md:col-span-2">
+                <div class="bg-orange-50 border-2 border-orange-300/50 rounded-lg p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">Edit Profile</h2>
+                        @if (!string.IsNullOrEmpty(_message))
+                        {
+                            <span class="@(_isError ? "text-red-600" : "text-green-600") font-bold px-4 py-2 bg-white rounded shadow">
+                                @_message
+                            </span>
+                        }
                     </div>
 
-                    <div>
-                        <label class="block text-sm text-gray-600 font-semibold mb-2">Email</label>
-                        <input type="email" placeholder="john@example.com" class="w-full px-4 py-2 rounded-lg border-2 border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300/50" />
-                    </div>
+                    @if (_role == "Client")
+                    {
+                        <EditForm Model="_client" OnValidSubmit="SaveClient">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
 
-                    <div>
-                        <label class="block text-sm text-gray-600 font-semibold mb-2">Phone</label>
-                        <input type="tel" placeholder="+1 (555) 123-4567" class="w-full px-4 py-2 rounded-lg border-2 border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300/50" />
-                    </div>
+                            <div class="grid grid-cols-1 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Name</label>
+                                    <InputText @bind-Value="_client.Name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Email (Read Only)</label>
+                                    <InputText @bind-Value="_client.Email" disabled class="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500" />
+                                </div>
 
-                    <div>
-                        <label class="block text-sm text-gray-600 font-semibold mb-2">Bio</label>
-                        <textarea placeholder="Tell us about yourself..." class="w-full px-4 py-2 rounded-lg border-2 border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300/50 h-24"></textarea>
-                    </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Phone</label>
+                                    <InputText @bind-Value="_client.PhoneNumber" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                </div>
 
-                    <button class="mt-6 px-6 py-3 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 transition">
-                        <i class="fas fa-save mr-2"></i>Save Changes
-                    </button>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700">Address 1</label>
+                                        <InputText @bind-Value="_client.Address1" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                    </div>
+                                    <div class="col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700">Address 2</label>
+                                        <InputText @bind-Value="_client.Address2" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">City</label>
+                                        <InputText @bind-Value="_client.City" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">State</label>
+                                        <InputText @bind-Value="_client.State" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Country</label>
+                                        <InputText @bind-Value="_client.Country" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Zip Code</label>
+                                        <InputText @bind-Value="_client.ZipCode" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                    </div>
+                                </div>
+
+                                <div class="mt-6">
+                                    <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition">
+                                        Save Changes
+                                    </button>
+                                </div>
+                            </div>
+                        </EditForm>
+                    }
+                    else if (_role == "Seller")
+                    {
+                        <EditForm Model="_seller" OnValidSubmit="SaveSeller">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
+
+                            <div class="grid grid-cols-1 gap-4">
+                                <div class="flex items-center gap-4">
+                                    @if (!string.IsNullOrEmpty(_seller.PhotoUrl))
+                                    {
+                                        <img src="@_seller.PhotoUrl" alt="Profile" class="w-20 h-20 rounded-full object-cover" />
+                                    }
+                                    <div class="flex-grow">
+                                        <label class="block text-sm font-medium text-gray-700">Photo URL</label>
+                                        <InputText @bind-Value="_seller.PhotoUrl" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Name (Store Name)</label>
+                                    <InputText @bind-Value="_seller.Name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Email (Read Only)</label>
+                                    <InputText @bind-Value="_seller.Email" disabled class="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500" />
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">About Me / Store Description</label>
+                                    <InputTextArea @bind-Value="_seller.AboutMe" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 h-24" />
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Phone</label>
+                                    <InputText @bind-Value="_seller.PhoneNumber" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700">Address 1</label>
+                                        <InputText @bind-Value="_seller.Address1" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                    </div>
+                                    <div class="col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700">Address 2</label>
+                                        <InputText @bind-Value="_seller.Address2" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">City</label>
+                                        <InputText @bind-Value="_seller.City" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">State</label>
+                                        <InputText @bind-Value="_seller.State" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Country</label>
+                                        <InputText @bind-Value="_seller.Country" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Zip Code</label>
+                                        <InputText @bind-Value="_seller.ZipCode" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                    </div>
+                                </div>
+
+                                <div class="mt-6">
+                                    <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition">
+                                        Save Changes
+                                    </button>
+                                </div>
+                            </div>
+                        </EditForm>
+                    }
                 </div>
             </div>
         </div>
-    </div>
+    }
 </div>

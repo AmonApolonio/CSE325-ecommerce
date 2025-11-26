@@ -1,15 +1,14 @@
-// Program.cs
+
 using Microsoft.EntityFrameworkCore;
 using backend.Data.Entities;
-using Microsoft.AspNetCore.Authentication.JwtBearer; // NOVO
-using Microsoft.IdentityModel.Tokens; // NOVO
-using System.Text; // NOVO
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // =======================================================
-// 1. AUTENTICAÇÃO JWT BEARER (Substitui Cookie)
-// Configure as chaves JWT no arquivo appsettings.json
+// 1. AUTENTICAÇÃO JWT BEARER
 // =======================================================
 builder.Services.AddAuthentication(options =>
 {
@@ -25,74 +24,64 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
 
-        // ESTES VALORES DEVEM SER LIDOS DO appsettings.json ou variáveis de ambiente
+        // Lê Issuer e múltiplos Audiences do appsettings.json
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+        ValidAudiences = builder.Configuration.GetSection("Jwt:Audiences").Get<string[]>(),
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is missing"))
+        )
     };
 });
+
 builder.Services.AddScoped<ITokenService, TokenService>();
 
-
-// ***************************************************************
-// 2. CONFIGURE DATABASE CONTEXT
+// =======================================================
+// 2. DATABASE CONTEXT
+// =======================================================
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
-// ***************************************************************
 
-builder.Services.AddEndpointsApiExplorer(); 
-builder.Services.AddSwaggerGen(); 
-builder.Services.AddControllers(); 
-
-// 3. CORS Policy (Mantenha o AllowAnyOrigin APENAS para desenvolvimento)
+// =======================================================
+// 3. CORS Policy (Permitir Blazor durante DEV)
+// =======================================================
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", corsBuilder =>
+    options.AddPolicy("AllowBlazor", corsBuilder =>
     {
-        // Em produção, substitua AllowAnyOrigin() por WithOrigins("https://seublazorfrontend.com")
-        corsBuilder.AllowAnyOrigin() 
-                   .AllowAnyMethod()
-                   .AllowAnyHeader();
+        corsBuilder.WithOrigins("http://localhost:5026") // URL do Blazor WebAssembly
+                   .AllowAnyHeader()
+                   .AllowAnyMethod();
     });
 });
 
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 var app = builder.Build();
 
-// A ordem é crucial: Autenticação antes da Autorização
-app.UseAuthentication();
-app.UseAuthorization();
+// =======================================================
+// MIDDLEWARE
+// =======================================================
 
-// =======================================================
-// Call SeedData on initialization (Mantenha esta seção)
-// =======================================================
+// Swagger apenas em DEV
 if (app.Environment.IsDevelopment())
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var services = scope.ServiceProvider;
-        try
-        {
-            // Seu código de Seeding...
-        }
-        catch (Exception ex)
-        {
-            var logger = services.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "❌ Ocorreu um erro durante o seeding da base de dados.");
-        }
-    }
-
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-// =======================================================
 
-// Redirecionamento obrigatório para HTTPS (Muito importante!)
+// Redireciona para HTTPS
 app.UseHttpsRedirection();
 
-app.UseCors("AllowAll");
+// Ativa CORS
+app.UseCors("AllowBlazor");
 
-app.MapControllers(); 
+// Autenticação e Autorização
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
 
 app.Run();

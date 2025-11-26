@@ -1,42 +1,64 @@
-@page "/login"
-@inject NavigationManager NavigationManager
 
+@page "/login"
+@using frontend.Models
+@inject NavigationManager NavigationManager
 @inject HttpClient Http
 @inject IJSRuntime JSRuntime
-
 @inject CustomAuthStateProvider AuthStateProvider
 
 <PageTitle>Login - SharpCraft Shop</PageTitle>
 
-
 @code {
     private string _email = string.Empty;
     private string _password = string.Empty;
+    private string _userType = "Client"; // Valor padrão
     private string _errorMessage = string.Empty;
 
     
-private async Task HandleLogin()
-{
-    var request = new LoginRequest { Email = _email, Password = _password };
-    var response = await Http.PostAsJsonAsync("api/auth/login", request);
-
-    if (response.IsSuccessStatusCode)
+    public class LoginResponse
     {
-        var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>();
+        public string Token { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+    };
 
-        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "authToken", loginResponse.Token);
-
-        AuthStateProvider.MarkUserAsAuthenticated(loginResponse.Token);
-
-        NavigationManager.NavigateTo("/account");
-    }
-    else
+    private async Task HandleLogin()
     {
-        _errorMessage = "Credenciais inválidas.";
+        var request = new LoginRequest
+        {
+            Email = _email,
+            Password = _password,
+            UserType = _userType
+        };
+
+        var response = await Http.PostAsJsonAsync("api/auth/login", request);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>();
+
+            if (loginResponse != null)
+            {
+                // Salva dados no localStorage
+                await JSRuntime.InvokeVoidAsync("localStorage.setItem", "authToken", loginResponse.Token);
+                await JSRuntime.InvokeVoidAsync("localStorage.setItem", "userRole", loginResponse.Role);
+                await JSRuntime.InvokeVoidAsync("localStorage.setItem", "userEmail", loginResponse.Email);
+
+                // Atualiza estado de autenticação
+                AuthStateProvider.MarkUserAsAuthenticated(loginResponse.Token);
+
+                NavigationManager.NavigateTo("/account");
+            }
+            else
+            {
+                _errorMessage = "Unexpected response from server.";
+            }
+        }
+        else
+        {
+            _errorMessage = "Invalid credentials.";
+        }
     }
-}
-    
-    
 }
 
 
@@ -47,38 +69,41 @@ private async Task HandleLogin()
             <p class="text-gray-600 text-center mb-8">Sign in to your account</p>
 
             <div class="space-y-4">
+                <!-- Email -->
                 <div>
                     <label class="block text-sm text-gray-600 font-semibold mb-2">Email</label>
-                    <input 
-                        type="email" 
-                        placeholder="you@example.com"
-                        class="w-full px-4 py-2 rounded-lg border-2 border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300/50"
-                        @bind="_email"
-                    />
+                    <input type="email" placeholder="you@example.com"
+                           class="w-full px-4 py-2 rounded-lg border-2 border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300/50"
+                           @bind="_email" />
                 </div>
 
+                <!-- Password -->
                 <div>
                     <label class="block text-sm text-gray-600 font-semibold mb-2">Password</label>
-                    <input 
-                        type="password" 
-                        placeholder="••••••••"
-                        class="w-full px-4 py-2 rounded-lg border-2 border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300/50"
-                        @bind="_password"
-                    />
+                    <input type="password" placeholder="••••••••"
+                           class="w-full px-4 py-2 rounded-lg border-2 border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300/50"
+                           @bind="_password" />
                 </div>
 
-                <div class="flex items-center justify-between">
-                    <label class="flex items-center">
-                        <input type="checkbox" class="w-4 h-4 rounded" />
-                        <span class="ml-2 text-sm text-gray-600">Remember me</span>
-                    </label>
-                    <a href="#" class="text-sm text-orange-400 hover:underline">Forgot password?</a>
+                <!-- User Type -->
+                <div>
+                    <label class="block text-sm text-gray-600 font-semibold mb-2">User Type</label>
+                    <select class="w-full px-4 py-2 rounded-lg border-2 border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300/50"
+                            @bind="_userType">
+                        <option value="Client">Client</option>
+                        <option value="Seller">Seller</option>
+                    </select>
                 </div>
 
-                <button 
-                    class="w-full py-3 px-4 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 transition"
-                    @onclick="HandleLogin"
-                >
+                <!-- Error Message -->
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <p class="text-red-500 text-sm mt-2">@_errorMessage</p>
+                }
+
+                <!-- Login Button -->
+                <button class="w-full py-3 px-4 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 transition"
+                        @onclick="HandleLogin">
                     <i class="fas fa-sign-in-alt mr-2"></i>Sign In
                 </button>
             </div>

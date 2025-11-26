@@ -1,10 +1,13 @@
 // Model no Blazor (pode ser o mesmo do backend)
 
-public class LoginRequest 
-{ 
-    public string Email { get; set; } 
-    public string Password { get; set; } 
+
+public class LoginRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string UserType { get; set; } = string.Empty;
 }
+
 
 public class LoginResponse 
 { 

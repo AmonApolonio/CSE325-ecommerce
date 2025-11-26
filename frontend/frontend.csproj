@@ -4,7 +4,8 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>frontend</AssemblyName> <!-- ADICIONADO: Garante que o nome do assembly seja 'frontend' -->
+    <AssemblyName>frontend</AssemblyName> 
+    <RootNamespace>frontend</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
