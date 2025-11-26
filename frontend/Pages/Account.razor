@@ -4,6 +4,8 @@
 @using System.ComponentModel.DataAnnotations
 @inject IHttpClientFactory ClientFactory
 @inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@using Microsoft.AspNetCore.Components.Forms
 
 <PageTitle>My Account - SharpCraft Shop</PageTitle>
 
@@ -23,27 +25,39 @@
             var email = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "userEmail");
             _role = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "userRole");
 
-            if (!string.IsNullOrEmpty(email) && !string.IsNullOrEmpty(_role))
+            // =================================================================
+            // CORREÇÃO: Verifica se o usuário está logado. Se não estiver, redireciona.
+            // Usamos 'forceLoad: true' para garantir que o navegador force um
+            // novo carregamento da página de login, contornando problemas de ciclo
+            // de vida do Blazor.
+            // =================================================================
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(_role))
             {
-                var httpClient = ClientFactory.CreateClient("BackendApi");
+                // Redireciona para a página de login, forçando o carregamento total
+                NavigationManager.NavigateTo("/login", forceLoad: true);
+                return; // Para a execução do restante da função, pois o usuário não está autenticado
+            }
+            // =================================================================
 
-                if (_role == "Client")
+            // Se a execução chegou até aqui, o usuário está logado. Procede com o carregamento do perfil.
+            var httpClient = ClientFactory.CreateClient("BackendApi");
+
+            if (_role == "Client")
+            {
+                var response = await httpClient.GetAsync($"api/Clients/by-email/{email}");
+                if (response.IsSuccessStatusCode)
                 {
-                    var response = await httpClient.GetAsync($"api/Clients/by-email/{email}");
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var result = await response.Content.ReadFromJsonAsync<ClientProfile>();
-                        if(result != null) _client = result;
-                    }
+                    var result = await response.Content.ReadFromJsonAsync<ClientProfile>();
+                    if(result != null) _client = result;
                 }
-                else if (_role == "Seller")
+            }
+            else if (_role == "Seller")
+            {
+                var response = await httpClient.GetAsync($"api/Sellers/by-email/{email}");
+                if (response.IsSuccessStatusCode)
                 {
-                    var response = await httpClient.GetAsync($"api/Sellers/by-email/{email}");
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var result = await response.Content.ReadFromJsonAsync<SellerProfile>();
-                        if(result != null) _seller = result;
-                    }
+                    var result = await response.Content.ReadFromJsonAsync<SellerProfile>();
+                    if(result != null) _seller = result;
                 }
             }
         }
@@ -54,6 +68,17 @@
 
         _isLoading = false;
     }
+
+    // =================================================================
+    // Função para tratar o Logout
+    // =================================================================
+    private void HandleLogout()
+    {
+        // Redireciona para o componente de Logout, onde a lógica de limpeza do localStorage e
+        // atualização do AuthStateProvider está contida.
+        NavigationManager.NavigateTo("/logout");
+    }
+
 
     // =================================================================
     // SaveSeller function (AJUSTADA PARA USAR DTO)
@@ -90,7 +115,7 @@
             }
             else
             {
-                // 🛑 Chamada de Erro
+                
                 var errorContent = await response.Content.ReadAsStringAsync();
                 ShowMessage($"Failed to update store profile. Status code: {response.StatusCode}. Details: {errorContent}", true);
             }
@@ -261,7 +286,8 @@
                     <a href="/account/settings" class="p-3 hover:bg-orange-100 text-gray-700">
                         <i class="fas fa-cog mr-2"></i>Settings
                     </a>
-                    <a href="/logout" class="p-3 hover:bg-orange-100 text-gray-700">
+                    @* O link de logout foi alterado para chamar a função C# HandleLogout *@
+                    <a href="javascript:void(0);" @onclick="HandleLogout" class="p-3 hover:bg-orange-100 text-gray-700 cursor-pointer">
                         <i class="fas fa-sign-out-alt mr-2"></i>Logout
                     </a>
                 </div>
