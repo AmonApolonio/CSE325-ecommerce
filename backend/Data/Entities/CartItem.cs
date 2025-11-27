@@ -5,7 +5,7 @@ namespace backend.Data.Entities;
 
 public partial class CartItem
 {
-    public long CartItem1 { get; set; }
+    public long CartItemId { get; set; }
 
     public long CartId { get; set; }
 

@@ -70,11 +70,11 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<CartItem>(entity =>
         {
-            entity.HasKey(e => new { e.CartItem1, e.Quantity }).HasName("cart_items_pkey");
+            entity.HasKey(e => new { e.CartItemId, e.Quantity }).HasName("cart_items_pkey");
 
             entity.ToTable("cart_items");
 
-            entity.Property(e => e.CartItem1)
+            entity.Property(e => e.CartItemId)
                 .ValueGeneratedOnAdd()
                 .HasColumnName("cart_item");
             entity.Property(e => e.Quantity).HasColumnName("quantity");
