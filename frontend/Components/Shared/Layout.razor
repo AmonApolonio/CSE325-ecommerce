@@ -1,0 +1,23 @@
+@namespace frontend.Components.Shared
+@using frontend.Components.UI
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public int CartItemCount { get; set; }
+}
+
+<div class="min-h-screen flex flex-col bg-white w-full">
+    @* Header *@
+    <Header CartItemCount="CartItemCount" />
+
+    @* Main Content *@
+    <main class="flex-1 w-full max-w-7xl mx-auto p-6 bg-white">
+        @ChildContent
+    </main>
+
+    @* Footer *@
+    <Footer />
+</div>

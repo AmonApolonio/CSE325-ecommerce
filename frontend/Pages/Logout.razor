@@ -1,0 +1,23 @@
+@page "/logout"
+@inject NavigationManager NavigationManager
+
+<PageTitle>Logout - SharpCraft Shop</PageTitle>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        // Simulate logout
+        await Task.Delay(500);
+        NavigationManager.NavigateTo("/");
+    }
+}
+
+<div class="min-h-screen bg-white flex items-center justify-center">
+    <div class="text-center">
+        <i class="fas fa-sign-out-alt text-orange-400 text-6xl mb-4"></i>
+        <p class="text-xl text-gray-600 mb-4">Logging you out...</p>
+        <div class="flex justify-center">
+            <div class="w-8 h-8 rounded-full border-4 border-orange-300 border-t-orange-400 animate-spin"></div>
+        </div>
+    </div>
+</div>

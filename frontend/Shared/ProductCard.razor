@@ -1,0 +1,27 @@
+@using frontend.Models
+@using frontend.Shared.Components
+
+<Card AdditionalClasses="product-card">
+    <div class="card-header">
+        <img src="@Product.ImagePath" alt="@Product.Title" loading="lazy" />
+    </div>
+
+    <div class="card-body">
+        <h3>@Product.Title</h3>
+        <p class="seller">by @Product.Seller</p>
+        <div class="rating">
+            <span class="stars" aria-label="Rating: @Product.Rating out of 5">★★★★★</span>
+            <span class="rating-value">@Product.Rating</span>
+        </div>
+        <p class="price">$@Product.Price.ToString("F2")</p>
+    </div>
+
+    <div class="card-footer">
+        <IconButton Icon="fa fa-cart-plus" Text="Add to Cart" AdditionalClasses="add-to-cart" AriaLabel="Add to cart" />
+    </div>
+</Card>
+
+@code {
+    [Parameter]
+    public Product Product { get; set; }
+}

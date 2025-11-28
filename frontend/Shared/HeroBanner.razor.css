@@ -1,0 +1,56 @@
+.hero-banner {
+    background: linear-gradient(#f2f4f7, #f6f7f9) !important;
+    color: #374151 !important;
+    padding: 2.25rem 1.25rem !important;
+    text-align: center !important;
+    border-radius: 8px !important;
+    border: 2px dashed var(--wire-border, #c9ccd2) !important;
+    margin: 1.25rem 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    min-height: 160px !important;
+}
+
+.hero-banner .hero-inner {
+    max-width: 1000px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+}
+
+.hero-banner h1 {
+    font-family: var(--font-family-heading) !important;
+    font-size: var(--font-size-xl) !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    color: #111827 !important;
+    text-align: center !important;
+}
+
+.hero-banner p {
+    font-size: var(--font-size-sm) !important;
+    margin: 0 !important;
+    color: #6b7280 !important;
+    text-align: center !important;
+}
+
+/* CTA is subtle in wireframe mode */
+.cta-button {
+    background: transparent !important;
+    color: #374151 !important;
+    border: 2px dashed var(--wire-border, #c9ccd2) !important;
+    padding: 0.45rem 0.75rem !important;
+    font-size: var(--font-size-sm) !important;
+    border-radius: 6px !important;
+    align-self: center !important;
+}
+
+.cta-button:hover {
+    background: rgba(0,0,0,0.02);
+}

@@ -1,0 +1,57 @@
+@namespace frontend.Components.UI
+
+@code {
+    /// <summary>
+    /// Rating value (0-5)
+    /// </summary>
+    [Parameter]
+    public decimal Rating { get; set; }
+
+    /// <summary>
+    /// Show the rating number next to stars
+    /// </summary>
+    [Parameter]
+    public bool ShowRating { get; set; } = true;
+
+    /// <summary>
+    /// Size of the stars: sm, md, lg
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    private string GetIconClass() => Size switch
+    {
+        "sm" => "text-sm",
+        "md" => "text-base",
+        "lg" => "text-lg",
+        _ => "text-base"
+    };
+
+    private List<bool> GetStars()
+    {
+        var stars = new List<bool>();
+        for (int i = 1; i <= 5; i++)
+        {
+            stars.Add(i <= (int)Math.Round(Rating));
+        }
+        return stars;
+    }
+}
+
+<div class="flex items-center gap-1">
+    @foreach (var isFilled in GetStars())
+    {
+        @if (isFilled)
+        {
+            <i class="fas fa-star text-yellow-400 @GetIconClass()"></i>
+        }
+        else
+        {
+            <i class="far fa-star text-yellow-300 @GetIconClass()"></i>
+        }
+    }
+    @if (ShowRating)
+    {
+        <span class="text-sm text-gray-600 ml-1">@Rating.ToString("0.0")</span>
+    }
+</div>

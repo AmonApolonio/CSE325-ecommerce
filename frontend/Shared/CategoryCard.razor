@@ -1,0 +1,21 @@
+@using frontend.Shared.Components
+
+<Card AdditionalClasses="category-card">
+    <div class="card-header">
+        <img src="@CategoryData.ImagePath" alt="@CategoryData.Name" />
+    </div>
+    <div class="card-body">
+        <h3>@CategoryData.Name</h3>
+    </div>
+</Card>
+
+@code {
+    [Parameter]
+    public Category CategoryData { get; set; }
+
+    public class Category
+    {
+        public string Name { get; set; }
+        public string ImagePath { get; set; }
+    }
+}

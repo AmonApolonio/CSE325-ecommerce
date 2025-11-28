@@ -1,0 +1,51 @@
+@namespace frontend.Components.Product
+
+@code {
+    [Parameter]
+    public List<ShoppingItem>? Items { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnProductClick { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnAddToCart { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnRemoveFromCart { get; set; }
+
+    private async Task HandleProductClick(string productId)
+    {
+        await OnProductClick.InvokeAsync(productId);
+    }
+
+    private async Task HandleAddToCart(string productId)
+    {
+        await OnAddToCart.InvokeAsync(productId);
+    }
+
+    private async Task HandleRemoveFromCart(string productId)
+    {
+        await OnRemoveFromCart.InvokeAsync(productId);
+    }
+}
+
+<section>
+    @if (Items != null && Items.Any())
+    {
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            @foreach (var item in Items)
+            {
+                <ProductCard 
+                    Product="item"
+                    OnProductClick="HandleProductClick"
+                    OnAddToCart="HandleAddToCart"
+                    OnRemoveFromCart="HandleRemoveFromCart"
+                />
+            }
+        </div>
+    }
+    else
+    {
+        <p class="text-gray-500 text-center py-8">No items available.</p>
+    }
+</section>
