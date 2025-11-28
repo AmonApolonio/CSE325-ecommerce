@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using frontend;
+using frontend.Services;
 
 using frontend.Services;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -31,8 +32,6 @@ builder.Services.AddScoped(sp =>
     };
 });
 
-
-
 builder.Services.AddAuthorizationCore();
 
 // 1. Registra o Handler JWT (Interceptor que anexa o token)
@@ -55,5 +54,9 @@ builder.Services.AddScoped<AuthService>(sp =>
     return new AuthService(clientFactory.CreateClient("BackendApi"));
 });
 
+builder.Services.AddScoped<MockProductService>();
+builder.Services.AddScoped<MockCategoryService>();
+builder.Services.AddScoped<MockCartService>();
+builder.Services.AddScoped<MockReviewService>();
 
 await builder.Build().RunAsync();

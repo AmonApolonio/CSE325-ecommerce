@@ -1,13 +1,17 @@
 @page "/logout"
 @inject NavigationManager NavigationManager
+<<<<<<< HEAD
 @inject IJSRuntime JSRuntime
 @inject CustomAuthStateProvider AuthStateProvider
+=======
+>>>>>>> main
 
 <PageTitle>Logout - SharpCraft Shop</PageTitle>
 
 @code {
     protected override async Task OnInitializedAsync()
     {
+<<<<<<< HEAD
         // 1. Remove as chaves de autenticação e sessão do localStorage
         await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "authToken");
         
@@ -24,11 +28,17 @@
 
         // 3. Redireciona para a página de login
         NavigationManager.NavigateTo("/login");
+=======
+        // Simulate logout
+        await Task.Delay(500);
+        NavigationManager.NavigateTo("/");
+>>>>>>> main
     }
 }
 
 <div class="min-h-screen bg-white flex items-center justify-center">
     <div class="text-center">
+<<<<<<< HEAD
         <!-- Ícone de logout com cor de destaque -->
         <i class="fas fa-sign-out-alt text-orange-400 text-6xl mb-4"></i>
         <p class="text-xl text-gray-600 mb-4">Logging you out...</p>
@@ -38,3 +48,12 @@
         </div>
     </div>
 </div>
+=======
+        <i class="fas fa-sign-out-alt text-orange-400 text-6xl mb-4"></i>
+        <p class="text-xl text-gray-600 mb-4">Logging you out...</p>
+        <div class="flex justify-center">
+            <div class="w-8 h-8 rounded-full border-4 border-orange-300 border-t-orange-400 animate-spin"></div>
+        </div>
+    </div>
+</div>
+>>>>>>> main
