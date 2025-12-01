@@ -7,7 +7,7 @@ public partial class Cart
 {
     public long CartId { get; set; }
 
-    public long UserId { get; set; }
+    public long? UserId { get; set; }
 
     public DateOnly CreatedDate { get; set; }
 

@@ -3,28 +3,57 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using frontend;
 using frontend.Services;
 
+using frontend.Services;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.JSInterop;
+
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// Configure HttpClient with API base address
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5028";
-builder.Services.AddScoped(sp => new HttpClient
+// Register mock services for demo data
+builder.Services.AddScoped<MockProductService>();
+builder.Services.AddScoped<MockCategoryService>();
+builder.Services.AddScoped<MockCartService>();
+builder.Services.AddScoped<MockReviewService>();
+
+
+builder.Services.AddScoped<JwtHandler>();
+builder.Services.AddScoped(sp =>
 {
-    BaseAddress = new Uri(apiBaseUrl)
+    var jsRuntime = sp.GetRequiredService<IJSRuntime>();
+    var handler = new JwtHandler(jsRuntime)
+    {
+        InnerHandler = new HttpClientHandler()
+    };
+    return new HttpClient(handler)
+    {
+        BaseAddress = new Uri("https://localhost:7198/") 
+    };
 });
 
-// Register real API services
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IProductService, ProductService>();
-builder.Services.AddScoped<ICategoryService, CategoryService>();
-builder.Services.AddScoped<ICartService, CartService>();
-builder.Services.AddScoped<IOrderService, OrderService>();
-builder.Services.AddScoped<ISellerService, SellerService>();
-builder.Services.AddScoped<IClientService, ClientService>();
+builder.Services.AddAuthorizationCore();
 
-// Keep mock services for backward compatibility with existing components
-// These can be removed once all components are migrated to real services
+// 1. Registra o Handler JWT (Interceptor que anexa o token)
+builder.Services.AddScoped<JwtHandler>();
+
+// 2. Registra o Provedor de Estado de Autenticação (Lê o token e define o usuário)
+builder.Services.AddScoped<CustomAuthStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(provider => 
+    provider.GetRequiredService<CustomAuthStateProvider>());
+
+// 3. Registra o HttpClient Nomeado ("BackendApi") com o JwtHandler
+builder.Services.AddHttpClient("BackendApi", client => 
+    client.BaseAddress = new Uri("https://localhost:7198/"))
+    .AddHttpMessageHandler<JwtHandler>();
+
+// 4. Registra o AuthService, garantindo que ele injete o HttpClient Nomeado
+builder.Services.AddScoped<AuthService>(sp =>
+{
+    var clientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    return new AuthService(clientFactory.CreateClient("BackendApi"));
+});
+
 builder.Services.AddScoped<MockProductService>();
 builder.Services.AddScoped<MockCategoryService>();
 builder.Services.AddScoped<MockCartService>();

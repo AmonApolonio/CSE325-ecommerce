@@ -140,3 +140,103 @@ code {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+
+/* Signup.razor.css - estilos exclusivos para Signup */
+
+/* Container principal */
+.signup-form {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 25px;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+
+/* Título principal */
+.signup-form h3 {
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #333;
+}
+
+/* Subtítulos */
+.signup-form h4 {
+    margin-top: 20px;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    color: #555;
+    font-weight: 600;
+}
+
+/* Grupo de campos */
+.signup-form .form-group {
+    margin-bottom: 20px;
+}
+
+/* Inputs e selects */
+.signup-form input.form-control,
+.signup-form select.form-control {
+    margin-bottom: 15px;
+    padding: 12px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+}
+
+.signup-form input.form-control:focus,
+.signup-form select.form-control:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+}
+
+/* Botão */
+.signup-form button.btn {
+    margin-top: 20px;
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: bold;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.signup-form button.btn:hover {
+    background-color: #0056b3;
+}
+
+/* Mensagem de feedback */
+.signup-form p {
+    margin-top: 15px;
+    text-align: center;
+    font-weight: bold;
+    color: #007bff;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .signup-form {
+        padding: 20px;
+        margin: 20px;
+    }
+
+    .signup-form h3 {
+        font-size: 1.5rem;
+    }
+
+    .signup-form h4 {
+        font-size: 1rem;
+    }
+}

@@ -1,107 +1,87 @@
-// Program.cs
+
 using Microsoft.EntityFrameworkCore;
 using backend.Data.Entities;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
+// =======================================================
+// 1. AUTENTICAÇÃO JWT BEARER
+// =======================================================
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        // Nome do cookie que ficará no navegador
-        options.Cookie.Name = "MeuApp.Auth"; 
-        
-        // SEGURANÇA MÁXIMA: Impede que o JS leia o cookie (Proteção XSS)
-        options.Cookie.HttpOnly = true; 
-        
-        // Só envia em conexões HTTPS
-        options.Cookie.SecurePolicy = CookieSecurePolicy.Always; 
-        
-        // Protege contra ataques de falsificação de requisição (CSRF)
-        // Use 'Strict' se Frontend e Backend estiverem no mesmo domínio exato
-        // Use 'Lax' se houver navegação entre subdomínios
-        options.Cookie.SameSite = SameSiteMode.Strict; 
-        
-        // Tempo de vida da sessão
-        options.ExpireTimeSpan = TimeSpan.FromHours(8);
-        options.SlidingExpiration = true; // Renova o tempo se o usuário estiver ativo
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
 
-        // O que acontece se tentar acessar sem logar? (Retorna 401 em vez de redirecionar para página HTML)
-        options.Events.OnRedirectToLogin = context =>
-        {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            return Task.CompletedTask;
-        };
-    });
+        // Lê Issuer e múltiplos Audiences do appsettings.json
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudiences = builder.Configuration.GetSection("Jwt:Audiences").Get<string[]>(),
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is missing"))
+        )
+    };
+});
 
-// Add services to the container.
+builder.Services.AddScoped<ITokenService, TokenService>();
 
-// 1. CONFIGURE DATABASE CONTEXT
+// =======================================================
+// 2. DATABASE CONTEXT
+// =======================================================
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
-// ***************************************************************
 
-
-builder.Services.AddEndpointsApiExplorer(); 
-builder.Services.AddSwaggerGen(); 
-
-
-builder.Services.AddControllers(); 
-
-// 3. CORS Policy
+// =======================================================
+// 3. CORS Policy (Permitir Blazor durante DEV)
+// =======================================================
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", corsBuilder =>
+    options.AddPolicy("AllowBlazor", corsBuilder =>
     {
-        corsBuilder.AllowAnyOrigin()
-                   .AllowAnyMethod()
-                   .AllowAnyHeader();
+        corsBuilder.WithOrigins("http://localhost:5026") // URL do Blazor WebAssembly
+                   .AllowAnyHeader()
+                   .AllowAnyMethod();
     });
 });
 
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 var app = builder.Build();
 
-app.UseAuthentication();
-app.UseAuthorization();
+// =======================================================
+// MIDDLEWARE
+// =======================================================
 
-// =======================================================
-//Call SeedData on initialization***
-// =======================================================
-// Seeding should only run in a development/test environment.
+// Swagger apenas em DEV
 if (app.Environment.IsDevelopment())
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var services = scope.ServiceProvider;
-        try
-        {
-            // O Initialize contém o EnsureDeleted() e EnsureCreated()
-            //SeedData.Initialize(services); 
-            //Console.WriteLine("✅ Seed Data executado com sucesso: base de dados reconstruída e preenchida.");
-        }
-        catch (Exception ex)
-        {
-            // Loga o erro em caso de falha no seeding
-            var logger = services.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "❌ Ocorreu um erro durante o seeding da base de dados.");
-        }
-    }
-
-    // Configuração do Swagger para desenvolvimento
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-// =======================================================
 
-
+// Redireciona para HTTPS
 app.UseHttpsRedirection();
 
-app.UseCors("AllowAll");
+// Ativa CORS
+app.UseCors("AllowBlazor");
 
-// --- APPLICATION ENDPOINTS (Your custom API routes will go here) ---
+// Autenticação e Autorização
+app.UseAuthentication();
+app.UseAuthorization();
 
-app.MapControllers(); 
+app.MapControllers();
 
 app.Run();

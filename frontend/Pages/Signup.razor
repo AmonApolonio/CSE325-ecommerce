@@ -1,0 +1,220 @@
+
+@page "/signup"
+@using System.Net.Http.Json
+@using frontend.Models
+@inject HttpClient Http
+
+<EditForm EditContext="@editContext" OnValidSubmit="RegisterUser">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="signup-form">
+        <h3>User Registration</h3>
+
+        <div class="form-group mb-3">
+            <label>User Type:</label>
+            <select @bind="UserType" class="form-control">
+                <option value="">Select...</option>
+                <option value="Client">Client</option>
+                <option value="Seller">Seller</option>
+            </select>
+        </div>
+
+        @if (UserType == "Client")
+        {
+            <h4>Client Information</h4>
+
+            <div class="form-group mb-2">
+                <label>Name:</label>
+                <InputText class="form-control" @bind-Value="client.Name" />
+                <ValidationMessage For="@(() => client.Name)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>Email:</label>
+                <InputText class="form-control" @bind-Value="client.Email" />
+                <ValidationMessage For="@(() => client.Email)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>Password:</label>
+                <InputText class="form-control" type="password" @bind-Value="client.PasswordHash" />
+                <ValidationMessage For="@(() => client.PasswordHash)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>Phone Number:</label>
+                <InputText class="form-control" @bind-Value="client.PhoneNumber" />
+                <ValidationMessage For="@(() => client.PhoneNumber)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>Address 1:</label>
+                <InputText class="form-control" @bind-Value="client.Address1" />
+                <ValidationMessage For="@(() => client.Address1)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>Address 2:</label>
+                <InputText class="form-control" @bind-Value="client.Address2" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>City:</label>
+                <InputText class="form-control" @bind-Value="client.City" />
+                <ValidationMessage For="@(() => client.City)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>State:</label>
+                <InputText class="form-control" @bind-Value="client.State" />
+                <ValidationMessage For="@(() => client.State)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>Country:</label>
+                <InputText class="form-control" @bind-Value="client.Country" />
+                <ValidationMessage For="@(() => client.Country)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>Zip Code:</label>
+                <InputText class="form-control" @bind-Value="client.ZipCode" />
+                <ValidationMessage For="@(() => client.ZipCode)" />
+            </div>
+        }
+        else if (UserType == "Seller")
+        {
+            <h4>Seller Information</h4>
+
+            <div class="form-group mb-2">
+                <label>Name:</label>
+                <InputText class="form-control" @bind-Value="seller.Name" />
+                <ValidationMessage For="@(() => seller.Name)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>Email:</label>
+                <InputText class="form-control" @bind-Value="seller.Email" />
+                <ValidationMessage For="@(() => seller.Email)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>Password:</label>
+                <InputText class="form-control" type="password" @bind-Value="seller.PasswordHash" />
+                <ValidationMessage For="@(() => seller.PasswordHash)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>Phone Number:</label>
+                <InputText class="form-control" @bind-Value="seller.PhoneNumber" />
+                <ValidationMessage For="@(() => seller.PhoneNumber)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>Photo (URL):</label>
+                <InputText class="form-control" @bind-Value="seller.PhotoUrl" />
+                <ValidationMessage For="@(() => seller.PhotoUrl)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>About Me:</label>
+                <InputText class="form-control" @bind-Value="seller.AboutMe" />
+                <ValidationMessage For="@(() => seller.AboutMe)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>Address 1:</label>
+                <InputText class="form-control" @bind-Value="seller.Address1" />
+                <ValidationMessage For="@(() => seller.Address1)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>Address 2:</label>
+                <InputText class="form-control" @bind-Value="seller.Address2" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>City:</label>
+                <InputText class="form-control" @bind-Value="seller.City" />
+                <ValidationMessage For="@(() => seller.City)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>State:</label>
+                <InputText class="form-control" @bind-Value="seller.State" />
+                <ValidationMessage For="@(() => seller.State)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>Country:</label>
+                <InputText class="form-control" @bind-Value="seller.Country" />
+                <ValidationMessage For="@(() => seller.Country)" />
+            </div>
+
+            <div class="form-group mb-2">
+                <label>Zip Code:</label>
+                <InputText class="form-control" @bind-Value="seller.ZipCode" />
+                <ValidationMessage For="@(() => seller.ZipCode)" />
+            </div>
+        }
+
+        <button class="btn btn-primary mt-3" type="submit">Register</button>
+
+        @if (!string.IsNullOrEmpty(message))
+        {
+            <p class="mt-2 text-info">@message</p>
+        }
+    </div>
+</EditForm>
+
+@code {
+    private string _userType = "";
+    private Client client = new();
+    private Seller seller = new();
+    private object currentUser;
+    private EditContext editContext;
+    private string message = "";
+
+    private string UserType
+    {
+        get => _userType;
+        set
+        {
+            _userType = value;
+            currentUser = _userType == "Client" ? client : seller;
+            editContext = new EditContext(currentUser);
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        currentUser = client; // Default model
+        editContext = new EditContext(currentUser);
+    }
+
+    private async Task RegisterUser()
+    {
+        HttpResponseMessage response;
+        if (UserType == "Client")
+        {
+            
+            client.Carts = new List<string>();
+            response = await Http.PostAsJsonAsync("api/Clients", client);
+        }
+        else if (UserType == "Seller")
+        {
+            
+            seller.Products = new List<string>();
+            seller.CommisionRate = 3;
+            response = await Http.PostAsJsonAsync("api/Sellers", seller);
+        }
+        else
+        {
+            message = "Please select a user type.";
+            return;
+        }
+
+        message = response.IsSuccessStatusCode ? $"{UserType} registered successfully!" : $"Error registering {UserType}.";
+    }
+}

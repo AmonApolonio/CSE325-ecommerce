@@ -1,60 +1,65 @@
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
-namespace SeuProjeto.Controllers // <--- IMPORTANTE: Ajuste para o namespace do seu projeto
+using Microsoft.AspNetCore.Mvc;
+using backend.Data.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace backend.Controllers
 {
-    [Route("api/[controller]")] // A rota será: seusever.com/api/auth
     [ApiController]
+    [Route("api/auth")]
     public class AuthController : ControllerBase
     {
+        private readonly AppDbContext _context;
+        private readonly ITokenService _tokenService;
+
+        public AuthController(AppDbContext context, ITokenService tokenService)
+        {
+            _context = context;
+            _tokenService = tokenService;
+        }
+
+        
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginModel login)
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            // 1. Validação (Simulação - aqui você consultaria seu Banco de Dados)
-            if (login.Usuario != "admin" || login.Senha != "1234")
-                return Unauthorized(new { message = "Usuário ou senha inválidos" });
+            if (string.IsNullOrEmpty(request.UserType))
+                return BadRequest(new { Message = "UserType is required (Client or Seller)" });
 
-            // 2. Criar a Identidade do Usuário (Claims)
-            // Claims são dados que você quer deixar "tatuados" no cookie (Id, Nome, Permissões)
-            var claims = new List<Claim>
+            if (request.UserType.Equals("Client", StringComparison.OrdinalIgnoreCase))
             {
-                new Claim(ClaimTypes.Name, login.Usuario),
-                new Claim(ClaimTypes.Role, "Admin"), 
-                new Claim("IdInterno", "99") // Exemplo de dado customizado
-            };
+                var client = await _context.Clients
+                    .FirstOrDefaultAsync(c => c.Email == request.Email && c.PasswordHash == request.Password);
 
-            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-
-            var authProperties = new AuthenticationProperties
+                if (client != null)
+                {
+                    var token = _tokenService.GenerateToken(client.Email, "Client");
+                    return Ok(new LoginResponse
+                    {
+                        Token = token,
+                        Email = client.Email,
+                        Role = "Client"
+                    });
+                }
+            }
+            else if (request.UserType.Equals("Seller", StringComparison.OrdinalIgnoreCase))
             {
-                IsPersistent = true, // Mantém logado mesmo fechando o navegador
-                ExpiresUtc = DateTime.UtcNow.AddHours(8) // O cookie expira em 8 horas
-            };
+                var seller = await _context.Sellers
+                    .FirstOrDefaultAsync(s => s.Email == request.Email && s.PasswordHash == request.Password);
 
-            // 3. Cria o Cookie criptografado e anexa na resposta
-            await HttpContext.SignInAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(claimsIdentity),
-                authProperties);
+                if (seller != null)
+                {
+                    var token = _tokenService.GenerateToken(seller.Email, "Seller");
+                    return Ok(new LoginResponse
+                    {
+                        Token = token,
+                        Email = seller.Email,
+                        Role = "Seller"
+                    });
+                }
+            }
 
-            return Ok(new { message = "Login realizado com sucesso! Cookie criado." });
+            return Unauthorized(new { Message = "Invalid credentials" });
         }
 
-        [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
-        {
-            // Remove o cookie do navegador
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return Ok(new { message = "Deslogado com sucesso" });
-        }
-    }
-
-    // Esta classe serve apenas para receber os dados do JSON
-    public class LoginModel
-    {
-        public string Usuario { get; set; }
-        public string Senha { get; set; }
     }
 }

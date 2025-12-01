@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Data.Entities;
-using System.Linq; // Adicione este using para o método .Any()
+using backend.DTOs;
 
 namespace backend.Controllers
 {
@@ -112,5 +112,67 @@ namespace backend.Controllers
 
             return NoContent(); // Retorna 204 Success
         }
+
+        
+// =================================================================
+// 6. GET: api/Clients/by-email/{email} (READ BY EMAIL)
+// =================================================================
+        [HttpGet("by-email/{email}")]
+        public async Task<ActionResult<Client>> GetClientByEmail(string email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return BadRequest("Email is required.");
+            }
+
+            var client = await _context.Clients.FirstOrDefaultAsync(c => c.Email == email);
+
+            if (client == null)
+            {
+                return NotFound($"Client with email '{email}' not found.");
+            }
+
+            return Ok(client);
+        }
+// =================================================================
+//PUT: api/Clients/details/{id} (UPDATE DETAILS ONLY)
+// =================================================================
+        [HttpPut("details/{id}")]
+        public async Task<IActionResult> PutClientDetails(long id, [FromBody] ClientDetailsDto detailsDto)
+        {
+            if (id != detailsDto.UserId)
+            {
+                return BadRequest("Client ID mismatch.");
+            }
+
+            var existingClient = await _context.Clients
+                .FirstOrDefaultAsync(c => c.UserId == id);
+
+            if (existingClient == null)
+            {
+                return NotFound();
+            }
+
+            // Mapeia APENAS os campos do DTO para o objeto existente
+            existingClient.Name = detailsDto.Name;
+            existingClient.PhoneNumber = detailsDto.PhoneNumber;
+            existingClient.Address1 = detailsDto.Address1;
+            // ... mapeie os outros campos de endereço aqui
+
+            // O Entity Framework rastreia as mudanças e atualiza apenas o que mudou.
+            // Não precisa de EntityState.Modified se você usou FindAsync() e alterou as propriedades.
+            
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException) when (!_context.Clients.Any(e => e.UserId == id))
+            {
+                return NotFound();
+            }
+
+            return NoContent(); // Retorna 204 Success
+        }
     }
+
 }

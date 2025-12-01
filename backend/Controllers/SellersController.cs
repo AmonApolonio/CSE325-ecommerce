@@ -112,5 +112,78 @@ namespace backend.Controllers
 
             return NoContent(); // Returns 204 Success
         }
+// =================================================================
+// 6. GET: api/Sellers/by-email/{email} (READ BY EMAIL)
+// =================================================================
+        
+    [HttpGet("by-email/{email}")]
+    public async Task<ActionResult<Seller>> GetSellerByEmail(string email)
+    {
+        if (string.IsNullOrEmpty(email))
+        {
+            return BadRequest("Email is required.");
+        }
+
+        var seller = await _context.Sellers.FirstOrDefaultAsync(s => s.Email == email);
+
+        if (seller == null)
+        {
+            return NotFound($"Seller with email '{email}' not found.");
+        }
+
+        return Ok(seller);
+    }
+    [HttpPut("details/{id}")] 
+    public async Task<IActionResult> UpdateSellerDetails(long id, SellerDetailsDto sellerDto)
+    {
+        // 1. ID Verification:
+        if (id != sellerDto.SellerId)
+        {
+            return BadRequest("Seller ID mismatch.");
+        }
+
+        // 2. Locate the Seller in the DB (with tracking, but without loading collections):
+        var sellerToUpdate = await _context.Sellers
+            .FirstOrDefaultAsync(s => s.SellerId == id);
+
+        if (sellerToUpdate == null)
+        {
+            return NotFound(); // 404
+        }
+
+        // 3. Map from DTO to the DB Model (Entity):
+        // Use AutoMapper or SAFE manual mapping
+        sellerToUpdate.Name = sellerDto.Name;
+        sellerToUpdate.PhotoUrl = sellerDto.PhotoUrl;
+        sellerToUpdate.AboutMe = sellerDto.AboutMe;
+        sellerToUpdate.PhoneNumber = sellerDto.PhoneNumber;
+        sellerToUpdate.Address1 = sellerDto.Address1;
+        sellerToUpdate.Address2 = sellerDto.Address2;
+        sellerToUpdate.City = sellerDto.City;
+        sellerToUpdate.State = sellerDto.State;
+        sellerToUpdate.Country = sellerDto.Country;
+        sellerToUpdate.ZipCode = sellerDto.ZipCode;
+        
+        // NOTE: Fields like Email, PasswordHash, and CommisionRate ARE NOT TOUCHED.
+
+        // 4. Save changes to the database:
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // ... (Concurrency handling logic if needed)
+            throw;
+        }
+        catch (Exception)
+        {
+            // ... (General error handling logic)
+            return StatusCode(500, "Internal server error during update.");
+        }
+
+        return NoContent(); // 204 Success (no content returned)
+    }
+
     }
 }
