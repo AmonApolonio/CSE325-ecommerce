@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using frontend;
 using frontend.Services;
 
-using frontend.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.JSInterop;
 

@@ -48,7 +48,12 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
         var jsonBytes = ParseBase64WithoutPadding(payload);
         var keyValuePairs = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonBytes);
         
-        var claims = keyValuePairs.Select(kvp => new Claim(kvp.Key, kvp.Value.ToString()));
+        if (keyValuePairs == null)
+        {
+            return Enumerable.Empty<Claim>();
+        }
+        
+        var claims = keyValuePairs.Select(kvp => new Claim(kvp.Key, kvp.Value?.ToString() ?? ""));
         
         // O JWT usa 'role' e 'sub' por padrão, mas o ASP.NET Core usa ClaimTypes.Role, etc.
         // Adicione aqui a lógica de mapeamento se necessário.

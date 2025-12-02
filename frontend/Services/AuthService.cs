@@ -26,7 +26,12 @@ namespace frontend.Services
                 response.EnsureSuccessStatusCode(); 
                 
                 // Se bem-sucedido, desserializa e retorna a resposta
-                return await response.Content.ReadFromJsonAsync<LoginResponse>();
+                var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
+                if (result == null)
+                {
+                    throw new ApplicationException("Invalid response from server.");
+                }
+                return result;
             }
             catch (HttpRequestException ex)
             {

@@ -10,12 +10,12 @@
 </Card>
 
 @code {
-    [Parameter]
-    public Category CategoryData { get; set; }
+    [Parameter, EditorRequired]
+    public Category CategoryData { get; set; } = new();
 
     public class Category
     {
-        public string Name { get; set; }
-        public string ImagePath { get; set; }
+        public string? Name { get; set; }
+        public string? ImagePath { get; set; }
     }
 }

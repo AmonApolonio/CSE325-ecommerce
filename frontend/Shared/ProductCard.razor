@@ -22,6 +22,6 @@
 </Card>
 
 @code {
-    [Parameter]
-    public Product Product { get; set; }
+    [Parameter, EditorRequired]
+    public Product Product { get; set; } = new();
 }

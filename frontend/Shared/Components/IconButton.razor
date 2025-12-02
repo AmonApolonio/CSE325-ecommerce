@@ -11,9 +11,9 @@
 </button>
 
 @code {
-    [Parameter] public string Icon { get; set; }
-    [Parameter] public string Text { get; set; }
-    [Parameter] public string AdditionalClasses { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public string? AdditionalClasses { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
-    [Parameter] public string AriaLabel { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
 }
