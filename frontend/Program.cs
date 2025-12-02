@@ -34,7 +34,7 @@ builder.Services.AddScoped(sp =>
     };
     return new HttpClient(handler)
     {
-        BaseAddress = new Uri("http://localhost:5028/") 
+        BaseAddress = new Uri("https://cse325-ecommerce-backend-fnbud5ghf5enapdp.brazilsouth-01.azurewebsites.net/") 
     };
 });
 
@@ -50,7 +50,7 @@ builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
 
 // 3. Registra o HttpClient Nomeado ("BackendApi") com o JwtHandler
 builder.Services.AddHttpClient("BackendApi", client => 
-    client.BaseAddress = new Uri("http://localhost:5028/"))
+    client.BaseAddress = new Uri("https://cse325-ecommerce-backend-fnbud5ghf5enapdp.brazilsouth-01.azurewebsites.net/"))
     .AddHttpMessageHandler<JwtHandler>();
 
 // 4. Registra o AuthService, garantindo que ele injete o HttpClient Nomeado
