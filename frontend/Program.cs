@@ -18,6 +18,13 @@ builder.Services.AddScoped<MockCartService>();
 builder.Services.AddScoped<MockReviewService>();
 
 
+// Register real services
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddScoped<ISellerService, SellerService>();
+
+
 builder.Services.AddScoped<JwtHandler>();
 builder.Services.AddScoped(sp =>
 {
@@ -28,7 +35,7 @@ builder.Services.AddScoped(sp =>
     };
     return new HttpClient(handler)
     {
-        BaseAddress = new Uri("https://localhost:7198/") 
+        BaseAddress = new Uri("http://localhost:5028/") 
     };
 });
 
@@ -44,7 +51,7 @@ builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
 
 // 3. Registra o HttpClient Nomeado ("BackendApi") com o JwtHandler
 builder.Services.AddHttpClient("BackendApi", client => 
-    client.BaseAddress = new Uri("https://localhost:7198/"))
+    client.BaseAddress = new Uri("http://localhost:5028/"))
     .AddHttpMessageHandler<JwtHandler>();
 
 // 4. Registra o AuthService, garantindo que ele injete o HttpClient Nomeado

@@ -2,10 +2,14 @@
 @using frontend.Services
 @using frontend.Models.Dtos
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 
 @inject ICartService CartService
 @inject IProductService ProductService
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject HttpClient HttpClient
 
 <PageTitle>Shopping Cart - SharpCraft Shop</PageTitle>
 
@@ -19,11 +23,68 @@
     {
         _isLoading = true;
         _errorMessage = null;
+
+        // Check if user is authenticated
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (!authState.User.Identity?.IsAuthenticated ?? true)
+        {
+            NavigationManager.NavigateTo("/login");
+            return;
+        }
+
+        // Get user details from claims
+        var email = authState.User.FindFirst("sub")?.Value;
+        var role = authState.User.FindFirst(ClaimTypes.Role)?.Value;
+        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(role))
+        {
+            _errorMessage = "Unable to identify user.";
+            _isLoading = false;
+            return;
+        }
+
+        long userId;
         try
         {
-            // TODO: Get the actual user ID from authentication service
-            // For now, we'll simulate cart loading when cart API endpoints are available
-            // _cart = await CartService.GetCartAsync(userId);
+            if (role == "Client")
+            {
+                var client = await HttpClient.GetFromJsonAsync<ClientDto>($"/api/Clients/by-email/{Uri.EscapeDataString(email)}");
+                if (client == null)
+                {
+                    _errorMessage = "User not found.";
+                    _isLoading = false;
+                    return;
+                }
+                userId = client.UserId;
+            }
+            else if (role == "Seller")
+            {
+                var seller = await HttpClient.GetFromJsonAsync<SellerDto>($"/api/Sellers/by-email/{Uri.EscapeDataString(email)}");
+                if (seller == null)
+                {
+                    _errorMessage = "User not found.";
+                    _isLoading = false;
+                    return;
+                }
+                userId = seller.SellerId;
+            }
+            else
+            {
+                _errorMessage = "Invalid user role.";
+                _isLoading = false;
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error fetching user details: {ex.Message}";
+            _isLoading = false;
+            return;
+        }
+
+        try
+        {
+            // Load cart for the authenticated user
+            _cart = await CartService.GetCartAsync(userId);
         }
         catch (Exception ex)
         {
@@ -38,17 +99,19 @@
 
     private async Task UpdateQuantity(long cartItemId, double newQuantity)
     {
+        if (_cart == null) return;
         if (newQuantity < 1)
         {
             await RemoveItem(cartItemId);
         }
         else
         {
+            var item = _cart.CartItems?.FirstOrDefault(i => i.CartItemId == cartItemId);
+            if (item == null) return;
             try
             {
-                // TODO: Implement when cart API is available
-                // await CartService.UpdateCartItemAsync(_cart.CartId, cartItemId, newQuantity);
-                // await RefreshCart();
+                await CartService.UpdateCartItemAsync(_cart.CartId, item.ProductId, newQuantity);
+                await RefreshCart();
             }
             catch (Exception ex)
             {
@@ -59,11 +122,13 @@
 
     private async Task RemoveItem(long cartItemId)
     {
+        if (_cart == null) return;
+        var item = _cart.CartItems?.FirstOrDefault(i => i.CartItemId == cartItemId);
+        if (item == null) return;
         try
         {
-            // TODO: Implement when cart API is available
-            // await CartService.RemoveFromCartAsync(_cart.CartId, cartItemId);
-            // await RefreshCart();
+            await CartService.RemoveFromCartAsync(_cart.CartId, item.ProductId);
+            await RefreshCart();
         }
         catch (Exception ex)
         {
@@ -73,7 +138,41 @@
 
     private async Task RefreshCart()
     {
-        // TODO: Reload cart after making changes
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var email = authState.User.FindFirst("sub")?.Value;
+        var role = authState.User.FindFirst(ClaimTypes.Role)?.Value;
+        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(role))
+        {
+            return;
+        }
+
+        long userId;
+        try
+        {
+            if (role == "Client")
+            {
+                var client = await HttpClient.GetFromJsonAsync<ClientDto>($"/api/Clients/by-email/{Uri.EscapeDataString(email)}");
+                userId = client?.UserId ?? 0;
+            }
+            else if (role == "Seller")
+            {
+                var seller = await HttpClient.GetFromJsonAsync<SellerDto>($"/api/Sellers/by-email/{Uri.EscapeDataString(email)}");
+                userId = seller?.SellerId ?? 0;
+            }
+            else
+            {
+                return;
+            }
+
+            if (userId != 0)
+            {
+                _cart = await CartService.GetCartAsync(userId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error refreshing cart: {ex.Message}";
+        }
     }
 
     private void ContinueShopping()
@@ -92,11 +191,8 @@
             return 0;
 
         return _cart.CartItems.Sum(item => 
-        {
-            // Calculate total per item (price * quantity)
-            // Note: Need to fetch price from product or API response
-            return 0;
-        });
+            (item.Product?.Price ?? 0) / 100.0m * (decimal)item.Quantity
+        );
     }
 }
 
@@ -145,8 +241,18 @@
                                 <i class="fas fa-image text-gray-300 text-2xl"></i>
                             </div>
                             <div class="flex-1">
-                                <h3 class="font-semibold text-gray-800 mb-2">Product #@item.ProductId</h3>
-                                <p class="text-gray-600 text-sm mb-3">Quantity: @item.Quantity</p>
+                                <h3 class="font-semibold text-gray-800 mb-2">@(item.Product?.Name ?? $"Product #{item.ProductId}")</h3>
+                                <p class="text-gray-600 text-sm mb-2">$@((item.Product?.Price ?? 0) / 100.0m) each</p>
+                                <div class="flex items-center gap-2 mb-3">
+                                    <label class="text-sm text-gray-600">Qty:</label>
+                                    <input 
+                                        type="number" 
+                                        min="1" 
+                                        value="@item.Quantity" 
+                                        @onchange="@(async (ChangeEventArgs e) => await UpdateQuantity(item.CartItemId, double.Parse(e.Value?.ToString() ?? "1")))"
+                                        class="w-16 px-2 py-1 border border-gray-300 rounded text-center"
+                                    />
+                                </div>
                                 <button 
                                     class="text-red-500 hover:text-red-700 text-sm font-semibold"
                                     @onclick="@(async () => await RemoveItem(item.CartItemId))"
@@ -167,7 +273,7 @@
                     <div class="space-y-3 mb-6 pb-6 border-b-2 border-orange-300/50">
                         <div class="flex justify-between">
                             <span class="text-gray-600">Subtotal</span>
-                            <span class="font-semibold">$0.00</span>
+                            <span class="font-semibold">$@GetCartTotal().ToString("F2")</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Shipping</span>
@@ -181,7 +287,7 @@
 
                     <div class="flex justify-between mb-6">
                         <span class="text-lg font-bold text-gray-800">Total</span>
-                        <span class="text-2xl font-bold text-orange-400">$0.00</span>
+                        <span class="text-2xl font-bold text-orange-400">$@GetCartTotal().ToString("F2")</span>
                     </div>
 
                     <button 

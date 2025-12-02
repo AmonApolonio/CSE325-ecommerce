@@ -42,7 +42,7 @@ public class CategoryDto
 public class CartDto
 {
     public long CartId { get; set; }
-    public long UserId { get; set; }
+    public long? UserId { get; set; }
     public DateTime CreatedDate { get; set; }
     public DateTime? UpdatedDate { get; set; }
     public List<CartItemDto>? CartItems { get; set; }

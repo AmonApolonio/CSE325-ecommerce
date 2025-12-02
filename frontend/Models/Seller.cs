@@ -17,20 +17,18 @@ public class Seller
     [StringLength(50, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters")]
     public string PasswordHash { get; set; } = "";
 
-    [Phone(ErrorMessage = "Invalid phone number")]
     public string PhoneNumber { get; set; } = "";
 
+    [Required(ErrorMessage = "Photo URL is required")]
     [Url(ErrorMessage = "Invalid URL format")]
     public string PhotoUrl { get; set; } = "";
 
-    [StringLength(500, ErrorMessage = "About Me cannot exceed 500 characters")]
     public string AboutMe { get; set; } = "";
 
     [Required(ErrorMessage = "Address 1 is required")]
     [StringLength(150, ErrorMessage = "Address cannot exceed 150 characters")]
     public string Address1 { get; set; } = "";
 
-    [StringLength(150, ErrorMessage = "Address cannot exceed 150 characters")]
     public string Address2 { get; set; } = "";
 
     [Required(ErrorMessage = "City is required")]

@@ -15,12 +15,36 @@ public class CartService : ICartService
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     }
 
+    private async Task<long> GetOrCreateCartIdAsync(long userId)
+    {
+        try
+        {
+            // Get client to find existing cart
+            var client = await _httpClient.GetFromJsonAsync<ClientDto>($"/api/Clients/{userId}");
+            if (client?.Carts != null && client.Carts.Any())
+            {
+                return client.Carts.First().CartId;
+            }
+            else
+            {
+                // Create new cart
+                var cart = await CreateCartAsync(userId);
+                return cart.CartId;
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Error getting or creating cart for user {userId}: {ex.Message}");
+            throw;
+        }
+    }
+
     public async Task<CartDto?> GetCartAsync(long userId)
     {
         try
         {
-            // GET cart for user - assumes endpoint exists or we derive from carts list
-            return await _httpClient.GetFromJsonAsync<CartDto>($"/api/Carts/{userId}");
+            var cartId = await GetOrCreateCartIdAsync(userId);
+            return await _httpClient.GetFromJsonAsync<CartDto>($"/api/Carts/{cartId}");
         }
         catch (HttpRequestException ex)
         {
@@ -46,12 +70,13 @@ public class CartService : ICartService
         }
     }
 
-    public async Task<CartItemDto> AddToCartAsync(long cartId, long productId, double quantity)
+    public async Task<CartItemDto> AddToCartAsync(long userId, long productId, double quantity)
     {
         try
         {
-            var cartItem = new { cartId, productId, quantity };
-            var response = await _httpClient.PostAsJsonAsync("/api/CartItems", cartItem);
+            var cartId = await GetOrCreateCartIdAsync(userId);
+            var cartItem = new { productId, quantity };
+            var response = await _httpClient.PostAsJsonAsync($"/api/Carts/{cartId}/items", cartItem);
             response.EnsureSuccessStatusCode();
             var item = await response.Content.ReadFromJsonAsync<CartItemDto>();
             return item ?? throw new InvalidOperationException("Failed to add item to cart");
@@ -63,26 +88,26 @@ public class CartService : ICartService
         }
     }
 
-    public async Task UpdateCartItemAsync(long cartId, long cartItemId, double quantity)
+    public async Task UpdateCartItemAsync(long cartId, long productId, double quantity)
     {
         try
         {
-            var updateRequest = new { quantity };
-            var response = await _httpClient.PutAsJsonAsync($"/api/CartItems/{cartItemId}", updateRequest);
+            var updateRequest = new { newQuantity = (int)quantity };
+            var response = await _httpClient.PutAsJsonAsync($"/api/Carts/{cartId}/items/{productId}", updateRequest);
             response.EnsureSuccessStatusCode();
         }
         catch (HttpRequestException ex)
         {
-            Console.WriteLine($"Error updating cart item {cartItemId}: {ex.Message}");
+            Console.WriteLine($"Error updating cart item {productId}: {ex.Message}");
             throw;
         }
     }
 
-    public async Task RemoveFromCartAsync(long cartId, long cartItemId)
+    public async Task RemoveFromCartAsync(long cartId, long productId)
     {
         try
         {
-            var response = await _httpClient.DeleteAsync($"/api/CartItems/{cartItemId}");
+            var response = await _httpClient.DeleteAsync($"/api/Carts/{cartId}/items/{productId}");
             response.EnsureSuccessStatusCode();
         }
         catch (HttpRequestException ex)
@@ -96,8 +121,14 @@ public class CartService : ICartService
     {
         try
         {
-            var response = await _httpClient.DeleteAsync($"/api/Carts/{cartId}");
-            response.EnsureSuccessStatusCode();
+            var cart = await _httpClient.GetFromJsonAsync<CartDto>($"/api/Carts/{cartId}");
+            if (cart?.CartItems != null)
+            {
+                foreach (var item in cart.CartItems)
+                {
+                    await _httpClient.DeleteAsync($"/api/Carts/{cartId}/items/{item.ProductId}");
+                }
+            }
         }
         catch (HttpRequestException ex)
         {

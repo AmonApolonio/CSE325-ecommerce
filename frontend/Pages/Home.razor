@@ -3,11 +3,15 @@
 @using frontend.Utils
 @using frontend.Services
 @using frontend.Models.Dtos
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 
 @inject IProductService ProductService
 @inject ICategoryService CategoryService
 @inject ICartService CartService
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject HttpClient HttpClient
 
 <PageTitle>Home - SharpCraft Shop</PageTitle>
 
@@ -21,6 +25,7 @@
     {
         _isLoading = true;
         _errorMessage = null;
+
         try
         {
             // Fetch products and categories in parallel
@@ -52,9 +57,50 @@
     {
         try
         {
-            // TODO: Implement cart functionality when cart API endpoints are available
-            // For now, navigate to product details
-            HandleProductClick(productId);
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            if (!authState.User.Identity?.IsAuthenticated ?? true)
+            {
+                NavigationManager.NavigateTo("/login");
+                return;
+            }
+
+            var email = authState.User.FindFirst("sub")?.Value;
+            var role = authState.User.FindFirst(ClaimTypes.Role)?.Value;
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(role))
+            {
+                _errorMessage = "Unable to identify user.";
+                return;
+            }
+
+            long userId;
+            if (role == "Client")
+            {
+                var client = await HttpClient.GetFromJsonAsync<ClientDto>($"/api/Clients/by-email/{Uri.EscapeDataString(email)}");
+                if (client == null)
+                {
+                    _errorMessage = "User not found.";
+                    return;
+                }
+                userId = client.UserId;
+            }
+            else if (role == "Seller")
+            {
+                var seller = await HttpClient.GetFromJsonAsync<SellerDto>($"/api/Sellers/by-email/{Uri.EscapeDataString(email)}");
+                if (seller == null)
+                {
+                    _errorMessage = "User not found.";
+                    return;
+                }
+                userId = seller.SellerId;
+            }
+            else
+            {
+                _errorMessage = "Invalid user role.";
+                return;
+            }
+
+            await CartService.AddToCartAsync(userId, productId, 1);
+            // Optionally, show success message or update UI
         }
         catch (Exception ex)
         {
@@ -109,7 +155,10 @@ else
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     @foreach (var product in _products.Take(8))
                     {
-                        <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg transition-shadow p-4">
+                        <div 
+                            class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg transition-shadow p-4 cursor-pointer"
+                            @onclick="@(() => HandleProductClick(product.ProductId))"
+                        >
                             <div class="mb-4 h-48 bg-gray-100 rounded flex items-center justify-center">
                                 <i class="fas fa-image text-gray-300 text-4xl"></i>
                             </div>
@@ -119,9 +168,10 @@ else
                                 <span class="text-lg font-bold text-orange-500">$@product.GetPriceAsDecimal().ToString("F2")</span>
                                 <button
                                     @onclick="@(async () => await HandleAddToCart(product.ProductId))"
+                                    @onclick:stopPropagation="true"
                                     class="bg-orange-400 hover:bg-orange-500 text-white px-4 py-2 rounded transition-colors"
                                 >
-                                    View
+                                    Add to Cart
                                 </button>
                             </div>
                         </div>
