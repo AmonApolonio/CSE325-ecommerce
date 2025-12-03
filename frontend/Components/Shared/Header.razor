@@ -34,7 +34,7 @@
     {
         if (!string.IsNullOrWhiteSpace(query))
         {
-            NavigationManager.NavigateTo($"/search?q={Uri.EscapeDataString(query)}");
+            NavigationManager.NavigateTo($"search?q={Uri.EscapeDataString(query)}");
             CloseMobileMenu();
         }
     }
@@ -44,7 +44,7 @@
     <div class="max-w-7xl mx-auto flex items-center justify-between">
         @* Logo *@
         <div class="flex items-center flex-shrink-0">
-            <a @onclick='() => NavigationManager.NavigateTo("/")' class="flex items-center" style="cursor: pointer;">
+            <a @onclick='() => NavigationManager.NavigateTo("")' class="flex items-center" style="cursor: pointer;">
                 <img
                     src="images/icon.png"
                     alt="SharpCraft Shop Logo"

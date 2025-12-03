@@ -80,7 +80,7 @@
     {
         // Redireciona para o componente de Logout, onde a lógica de limpeza do localStorage e
         // atualização do AuthStateProvider está contida.
-        NavigationManager.NavigateTo("/logout");
+        NavigationManager.NavigateTo("logout");
     }
 
 
@@ -278,7 +278,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div class="md:col-span-1">
                 <div class="bg-orange-50 border-2 border-orange-300/50 rounded-lg overflow-hidden flex flex-col">
-                    <a href="/account" class="p-3 bg-orange-200 text-gray-800 font-bold">
+                    <a href="account" class="p-3 bg-orange-200 text-gray-800 font-bold">
                         <i class="fas fa-user mr-2"></i>Profile
                     </a>
                     @* O link de logout foi alterado para chamar a função C# HandleLogout *@
