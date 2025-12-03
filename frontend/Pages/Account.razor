@@ -38,7 +38,7 @@
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(_role))
             {
                 // Redireciona para a página de login, forçando o carregamento total
-                NavigationManager.NavigateTo("/login", forceLoad: true);
+                NavigationManager.NavigateTo("login", forceLoad: true);
                 return; // Para a execução do restante da função, pois o usuário não está autenticado
             }
             // =================================================================
