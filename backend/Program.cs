@@ -72,8 +72,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Redireciona para HTTPS
-app.UseHttpsRedirection();
+// Redireciona para HTTPS apenas em produção
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // Ativa CORS
 app.UseCors("AllowBlazor");
