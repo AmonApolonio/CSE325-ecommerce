@@ -44,7 +44,7 @@
     <div class="max-w-7xl mx-auto flex items-center justify-between">
         @* Logo *@
         <div class="flex items-center flex-shrink-0">
-            <a href="/" class="flex items-center">
+            <a @onclick='() => NavigationManager.NavigateTo("/")' class="flex items-center" style="cursor: pointer;">
                 <img
                     src="images/icon.png"
                     alt="SharpCraft Shop Logo"
@@ -81,13 +81,13 @@
         <div class="hidden md:flex items-center gap-3">
             @if (_isAuthenticated)
             {
-                <a href="/account">
+                <a href="account">
                     <Button Variant="filled" Class="h-10 px-3 py-1" Grow="true">
                         <i class="fas fa-user mr-2"></i>
                         My Account
                     </Button>
                 </a>
-                <a href="/cart">
+                <a href="cart">
                     <Button Variant="filled" Class="h-10 px-3 py-1 relative" Grow="true">
                         <i class="fas fa-shopping-cart mr-2"></i>
                         Cart
@@ -102,7 +102,7 @@
             }
             else
             {
-                <a href="/login">
+                <a href="login">
                     <Button Variant="filled" Class="h-10 px-3 py-1" Grow="true">
                         <i class="fas fa-sign-in-alt mr-2"></i>
                         Login
@@ -140,13 +140,13 @@
             />
             @if (_isAuthenticated)
             {
-                <a href="/account" @onclick="CloseMobileMenu">
+                <a href="account" @onclick="CloseMobileMenu">
                     <Button Variant="filled" Class="h-10 px-3 py-1 w-full" Grow="true">
                         <i class="fas fa-user mr-2"></i>
                         My Account
                     </Button>
                 </a>
-                <a href="/cart" @onclick="CloseMobileMenu">
+                <a href="cart" @onclick="CloseMobileMenu">
                     <Button Variant="filled" Class="h-10 px-3 py-1 w-full relative" Grow="true">
                         <i class="fas fa-shopping-cart mr-2"></i>
                         Cart
@@ -161,7 +161,7 @@
             }
             else
             {
-                <a href="/login" @onclick="CloseMobileMenu">
+                <a href="login" @onclick="CloseMobileMenu">
                     <Button Variant="filled" Class="h-10 px-3 py-1 w-full" Grow="true">
                         <i class="fas fa-sign-in-alt mr-2"></i>
                         Login
