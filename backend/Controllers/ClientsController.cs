@@ -5,7 +5,7 @@ using backend.DTOs;
 
 namespace backend.Controllers
 {
-    [Route("api/[controller]")]
+   [Route("api/[controller]")]
     [ApiController]
     public class ClientsController : ControllerBase
     {
@@ -155,12 +155,15 @@ namespace backend.Controllers
 
             // Mapeia APENAS os campos do DTO para o objeto existente
             existingClient.Name = detailsDto.Name;
+            existingClient.Email = detailsDto.Email;
             existingClient.PhoneNumber = detailsDto.PhoneNumber;
             existingClient.Address1 = detailsDto.Address1;
-            // ... mapeie os outros campos de endereço aqui
+            existingClient.Address2 = detailsDto.Address2;
+            existingClient.City = detailsDto.City;
+            existingClient.State = detailsDto.State;
+            existingClient.ZipCode = detailsDto.ZipCode;
+            existingClient.Country = detailsDto.Country;
 
-            // O Entity Framework rastreia as mudanças e atualiza apenas o que mudou.
-            // Não precisa de EntityState.Modified se você usou FindAsync() e alterou as propriedades.
             
             try
             {
