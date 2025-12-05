@@ -19,13 +19,39 @@ namespace backend.Controllers
         }
 
         // -------------------------------------------------------------
-        // GET (All Products)
+        // GET (All Products OR Filtered by Name, SellerId AND/OR CategoryId)
         // -------------------------------------------------------------
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
+        // Rota: /api/Products?name=termo&sellerId=123&categoryId=456
+        public async Task<ActionResult<IEnumerable<Product>>> GetProducts(
+            [FromQuery] string name = null,
+            [FromQuery] long? sellerId = null,
+            [FromQuery] long? categoryId = null) // NOVO PARÂMETRO
         {
-            // Retrieves all products from the database
-            return await _context.Products.ToListAsync();
+            IQueryable<Product> products = _context.Products;
+
+            // 1. Filtrar por Nome (se fornecido)
+            if (!string.IsNullOrEmpty(name))
+            {
+                products = products.Where(p => p.Name.Contains(name)); 
+            }
+            
+            // 2. Filtrar por SellerId (se fornecido)
+            if (sellerId.HasValue)
+            {
+                // Filtra os resultados que já podem ter sido filtrados por nome
+                products = products.Where(p => p.SellerId == sellerId.Value); 
+            }
+
+            // 3. Filtrar por CategoryId (se fornecido)
+            if (categoryId.HasValue)
+            {
+                // Aplica a filtragem ao resultado existente.
+                // Assumimos que o campo na entidade Product é Product.CategoryId
+                products = products.Where(p => p.CategoryId == categoryId.Value); 
+            }
+
+            return await products.ToListAsync();
         }
 
         // -------------------------------------------------------------
@@ -41,7 +67,6 @@ namespace backend.Controllers
             await _context.SaveChangesAsync();
 
             // 3. Returns the 201 Created code and the link to the new resource
-            // The name of the GetProductById method must match your GET method by ID.
             return CreatedAtAction(nameof(GetProductById), new { id = product.ProductId }, product);
         }
         
