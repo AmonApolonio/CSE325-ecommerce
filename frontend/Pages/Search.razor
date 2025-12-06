@@ -15,6 +15,7 @@
     private string _searchQuery = string.Empty;
     private bool _isLoading = true;
     private string? _errorMessage;
+    private string? _categoryName;
 
     [SupplyParameterFromQuery(Name = "q")]
     public string? Query { get; set; }
@@ -28,11 +29,24 @@
         _errorMessage = null;
         try
         {
-            // Fetch all products
-            _allProducts = await ProductService.GetAllProductsAsync();
-            
-            // Apply filters from URL parameters
-            ApplyFilters();
+            _searchQuery = Query ?? string.Empty;
+            // Fetch products with API filtering
+            _filteredProducts = await ProductService.GetProductsAsync(name: _searchQuery, categoryId: CategoryId);
+            _allProducts = _filteredProducts; // For compatibility, though not used for filtering anymore
+
+            // Fetch category name if categoryId is provided
+            if (CategoryId.HasValue)
+            {
+                try
+                {
+                    var category = await CategoryService.GetCategoryByIdAsync(CategoryId.Value);
+                    _categoryName = category?.Name;
+                }
+                catch
+                {
+                    _categoryName = null;
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -45,34 +59,23 @@
         }
     }
 
-    private void ApplyFilters()
-    {
-        _filteredProducts = _allProducts.AsEnumerable().Where(p =>
-        {
-            // Filter by search query
-            if (!string.IsNullOrEmpty(_searchQuery) &&
-                !p.Name?.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) == true &&
-                !p.Description?.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) == true)
-            {
-                return false;
-            }
-
-            // Filter by category
-            if (CategoryId.HasValue && p.CategoryId != CategoryId.Value)
-            {
-                return false;
-            }
-
-            return true;
-        }).ToList();
-    }
-
     public async Task HandleSearch(string query)
     {
         _searchQuery = query;
-        ApplyFilters();
-        StateHasChanged();
-        await Task.CompletedTask;
+        _isLoading = true;
+        try
+        {
+            _filteredProducts = await ProductService.GetProductsAsync(name: _searchQuery, categoryId: CategoryId);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error searching products: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
     }
 
     private void HandleProductClick(long productId)
@@ -82,7 +85,22 @@
 }
 
 <div class="bg-white">
-    <h1 class="text-3xl font-bold text-gray-800 mb-8">Search Products</h1>
+    @if (!string.IsNullOrEmpty(_searchQuery) && !string.IsNullOrEmpty(_categoryName))
+    {
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">Search Results for "@_searchQuery" in @_categoryName</h1>
+    }
+    else if (!string.IsNullOrEmpty(_searchQuery))
+    {
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">Search Results for "@_searchQuery"</h1>
+    }
+    else if (!string.IsNullOrEmpty(_categoryName))
+    {
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">Products in @_categoryName</h1>
+    }
+    else
+    {
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">All Products</h1>
+    }
 
     @if (_isLoading)
     {

@@ -8,6 +8,7 @@ namespace frontend.Services;
 public interface IProductService
 {
     Task<List<ProductDto>> GetAllProductsAsync();
+    Task<List<ProductDto>> GetProductsAsync(string? name = null, long? sellerId = null, long? categoryId = null);
     Task<ProductDto?> GetProductByIdAsync(long id);
     Task<ProductDto> CreateProductAsync(ProductDto product);
     Task UpdateProductAsync(long id, ProductDto product);
