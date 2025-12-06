@@ -10,18 +10,17 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// Register mock services for demo data
-builder.Services.AddScoped<MockProductService>();
-builder.Services.AddScoped<MockCategoryService>();
-builder.Services.AddScoped<MockCartService>();
-builder.Services.AddScoped<MockReviewService>();
-
-
 // Register real services
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
-builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<ISellerService, SellerService>();
+
+// CartService needs to be registered with factory to get authenticated HttpClient
+builder.Services.AddScoped<ICartService>(sp =>
+{
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    return new CartService(httpClientFactory);
+});
 
 
 builder.Services.AddScoped<JwtHandler>();
@@ -34,7 +33,7 @@ builder.Services.AddScoped(sp =>
     };
     return new HttpClient(handler)
     {
-        BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"])
+        BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? throw new InvalidOperationException("ApiBaseUrl is not configured"))
     };
 });
 
@@ -50,7 +49,7 @@ builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
 
 // 3. Registra o HttpClient Nomeado ("BackendApi") com o JwtHandler
 builder.Services.AddHttpClient("BackendApi", client => 
-    client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"]))
+    client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? throw new InvalidOperationException("ApiBaseUrl is not configured")))
     .AddHttpMessageHandler<JwtHandler>();
 
 // 4. Registra o AuthService, garantindo que ele injete o HttpClient Nomeado
@@ -59,10 +58,5 @@ builder.Services.AddScoped<AuthService>(sp =>
     var clientFactory = sp.GetRequiredService<IHttpClientFactory>();
     return new AuthService(clientFactory.CreateClient("BackendApi"));
 });
-
-builder.Services.AddScoped<MockProductService>();
-builder.Services.AddScoped<MockCategoryService>();
-builder.Services.AddScoped<MockCartService>();
-builder.Services.AddScoped<MockReviewService>();
 
 await builder.Build().RunAsync();

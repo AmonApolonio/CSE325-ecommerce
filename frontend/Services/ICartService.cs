@@ -7,10 +7,40 @@ namespace frontend.Services;
 /// </summary>
 public interface ICartService
 {
+    /// <summary>
+    /// Creates a new anonymous cart. Must be called before logging in to preserve cart items.
+    /// The returned cart ID should be stored and used to merge with user account after login.
+    /// </summary>
+    Task<long> CreateAnonymousCartAsync();
+
+    /// <summary>
+    /// Merges an anonymous cart with the authenticated user's account.
+    /// After login, call this with the anonymous cart ID to link it to the user.
+    /// </summary>
+    Task<CartDto> MergeCartAsync(long anonymousCartId);
+
+    /// <summary>
+    /// Gets the current user's cart by their ID.
+    /// </summary>
     Task<CartDto?> GetCartAsync(long userId);
-    Task<CartDto> CreateCartAsync(long userId);
-    Task<CartItemDto> AddToCartAsync(long userId, long productId, double quantity);
+
+    /// <summary>
+    /// Adds an item to the cart. Requires a valid cartId.
+    /// </summary>
+    Task AddToCartAsync(long cartId, long productId, double quantity);
+
+    /// <summary>
+    /// Updates the quantity of an item in the cart.
+    /// </summary>
     Task UpdateCartItemAsync(long cartId, long productId, double quantity);
+
+    /// <summary>
+    /// Removes an item from the cart.
+    /// </summary>
     Task RemoveFromCartAsync(long cartId, long productId);
+
+    /// <summary>
+    /// Clears all items from the cart.
+    /// </summary>
     Task ClearCartAsync(long cartId);
 }

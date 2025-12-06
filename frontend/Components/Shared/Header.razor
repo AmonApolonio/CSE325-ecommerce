@@ -4,7 +4,6 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
 @inject NavigationManager NavigationManager
-@inject MockProductService ProductService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
 @code {
@@ -13,11 +12,13 @@
 
     private bool _mobileMenuOpen;
     private bool _isAuthenticated;
+    private string? _userRole;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         _isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
+        _userRole = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
     }
 
     private void ToggleMobileMenu()
@@ -87,18 +88,21 @@
                         My Account
                     </Button>
                 </a>
-                <a href="cart">
-                    <Button Variant="filled" Class="h-10 px-3 py-1 relative" Grow="true">
-                        <i class="fas fa-shopping-cart mr-2"></i>
-                        Cart
-                        @if (CartItemCount > 0)
-                        {
-                            <span class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
-                                @CartItemCount
-                            </span>
-                        }
-                    </Button>
-                </a>
+                @if (_userRole != "Seller")
+                {
+                    <a href="cart">
+                        <Button Variant="filled" Class="h-10 px-3 py-1 relative" Grow="true">
+                            <i class="fas fa-shopping-cart mr-2"></i>
+                            Cart
+                            @if (CartItemCount > 0)
+                            {
+                                <span class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
+                                    @CartItemCount
+                                </span>
+                            }
+                        </Button>
+                    </a>
+                }
             }
             else
             {
@@ -146,18 +150,21 @@
                         My Account
                     </Button>
                 </a>
-                <a href="cart" @onclick="CloseMobileMenu">
-                    <Button Variant="filled" Class="h-10 px-3 py-1 w-full relative" Grow="true">
-                        <i class="fas fa-shopping-cart mr-2"></i>
-                        Cart
-                        @if (CartItemCount > 0)
-                        {
-                            <span class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
-                                @CartItemCount
-                            </span>
-                        }
-                    </Button>
-                </a>
+                @if (_userRole != "Seller")
+                {
+                    <a href="cart" @onclick="CloseMobileMenu">
+                        <Button Variant="filled" Class="h-10 px-3 py-1 w-full relative" Grow="true">
+                            <i class="fas fa-shopping-cart mr-2"></i>
+                            Cart
+                            @if (CartItemCount > 0)
+                            {
+                                <span class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
+                                    @CartItemCount
+                                </span>
+                            }
+                        </Button>
+                    </a>
+                }
             }
             else
             {

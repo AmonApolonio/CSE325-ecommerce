@@ -10,14 +10,17 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject HttpClient HttpClient
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Shopping Cart - SharpCraft Shop</PageTitle>
 
 @code {
     private CartDto? _cart;
+    private long _cartId = 0;
     private bool _isLoading = true;
     private string? _errorMessage;
     private Dictionary<long, ProductDto?> _productCache = new();
+    private string? _userRole;
 
     protected override async Task OnInitializedAsync()
     {
@@ -32,59 +35,33 @@
             return;
         }
 
-        // Get user details from claims
-        var email = authState.User.FindFirst("sub")?.Value;
-        var role = authState.User.FindFirst(ClaimTypes.Role)?.Value;
-        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(role))
+        // Check if user is a seller
+        _userRole = authState.User.FindFirst(ClaimTypes.Role)?.Value;
+        if (_userRole == "Seller")
         {
-            _errorMessage = "Unable to identify user.";
+            _errorMessage = "Sellers cannot add items to cart. This feature is only available for customers.";
             _isLoading = false;
             return;
         }
 
-        long userId;
         try
         {
-            if (role == "Client")
+            // Try to get cartId from localStorage (set after login or during anonymous browsing)
+            var cartIdFromStorage = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "cartId");
+            if (!string.IsNullOrEmpty(cartIdFromStorage) && long.TryParse(cartIdFromStorage, out var cartId))
             {
-                var client = await HttpClient.GetFromJsonAsync<ClientDto>($"/api/Clients/by-email/{Uri.EscapeDataString(email)}");
-                if (client == null)
-                {
-                    _errorMessage = "User not found.";
-                    _isLoading = false;
-                    return;
-                }
-                userId = client.UserId;
-            }
-            else if (role == "Seller")
-            {
-                var seller = await HttpClient.GetFromJsonAsync<SellerDto>($"/api/Sellers/by-email/{Uri.EscapeDataString(email)}");
-                if (seller == null)
-                {
-                    _errorMessage = "User not found.";
-                    _isLoading = false;
-                    return;
-                }
-                userId = seller.SellerId;
+                _cartId = cartId;
+                Console.WriteLine($"Retrieved cartId from localStorage: {_cartId}");
+                
+                // Fetch the cart using the cartId
+                await RefreshCartByCartId();
             }
             else
             {
-                _errorMessage = "Invalid user role.";
-                _isLoading = false;
-                return;
+                // No cartId in localStorage - create new cart and merge with authenticated user
+                Console.WriteLine("No cartId found in localStorage. Creating new cart for authenticated user...");
+                await CreateAndMergeCartForAuthenticatedUser();
             }
-        }
-        catch (Exception ex)
-        {
-            _errorMessage = $"Error fetching user details: {ex.Message}";
-            _isLoading = false;
-            return;
-        }
-
-        try
-        {
-            // Load cart for the authenticated user
-            _cart = await CartService.GetCartAsync(userId);
         }
         catch (Exception ex)
         {
@@ -97,9 +74,71 @@
         }
     }
 
+    private async Task CreateAndMergeCartForAuthenticatedUser()
+    {
+        try
+        {
+            // Step 1: Create a new anonymous cart
+            Console.WriteLine("Step 1: Creating new anonymous cart...");
+            var newCartId = await CartService.CreateAnonymousCartAsync();
+            Console.WriteLine($"Created anonymous cart with ID: {newCartId}");
+
+            // Step 2: Merge the anonymous cart with the authenticated user
+            Console.WriteLine($"Step 2: Merging cart {newCartId} with authenticated user...");
+            var mergedCart = await CartService.MergeCartAsync(newCartId);
+            Console.WriteLine($"Cart merged successfully. Merged cartId: {mergedCart.CartId}");
+
+            // Step 3: Store the merged cartId in localStorage
+            _cartId = mergedCart.CartId;
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "cartId", _cartId.ToString());
+            Console.WriteLine($"Stored merged cartId in localStorage: {_cartId}");
+
+            // Step 4: Load the cart
+            await RefreshCartByCartId();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error creating cart for authenticated user: {ex.Message}";
+            Console.WriteLine(_errorMessage);
+        }
+    }
+
+    private async Task RefreshCartByCartId()
+    {
+        if (_cartId == 0)
+        {
+            _errorMessage = "Cart ID is not set";
+            return;
+        }
+
+        try
+        {
+            // Call the get cart endpoint with the cartId
+            var response = await HttpClient.GetAsync($"/api/Carts/{_cartId}");
+            if (response.IsSuccessStatusCode)
+            {
+                // The response contains { Cart, Total } structure
+                Console.WriteLine($"Cart fetched successfully for cartId: {_cartId}");
+                
+                // For now, we'll load cart items directly
+                _cart = new CartDto { CartId = _cartId };
+                _errorMessage = null;
+            }
+            else
+            {
+                _errorMessage = "Failed to load cart";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error refreshing cart: {ex.Message}";
+            Console.WriteLine(_errorMessage);
+        }
+    }
+
     private async Task UpdateQuantity(long cartItemId, double newQuantity)
     {
-        if (_cart == null) return;
+        if (_cart == null || _cartId == 0) return;
         if (newQuantity < 1)
         {
             await RemoveItem(cartItemId);
@@ -110,8 +149,8 @@
             if (item == null) return;
             try
             {
-                await CartService.UpdateCartItemAsync(_cart.CartId, item.ProductId, newQuantity);
-                await RefreshCart();
+                await CartService.UpdateCartItemAsync(_cartId, item.ProductId, newQuantity);
+                await RefreshCartByCartId();
             }
             catch (Exception ex)
             {
@@ -122,56 +161,17 @@
 
     private async Task RemoveItem(long cartItemId)
     {
-        if (_cart == null) return;
+        if (_cart == null || _cartId == 0) return;
         var item = _cart.CartItems?.FirstOrDefault(i => i.CartItemId == cartItemId);
         if (item == null) return;
         try
         {
-            await CartService.RemoveFromCartAsync(_cart.CartId, item.ProductId);
-            await RefreshCart();
+            await CartService.RemoveFromCartAsync(_cartId, item.ProductId);
+            await RefreshCartByCartId();
         }
         catch (Exception ex)
         {
             _errorMessage = $"Error removing item: {ex.Message}";
-        }
-    }
-
-    private async Task RefreshCart()
-    {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var email = authState.User.FindFirst("sub")?.Value;
-        var role = authState.User.FindFirst(ClaimTypes.Role)?.Value;
-        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(role))
-        {
-            return;
-        }
-
-        long userId;
-        try
-        {
-            if (role == "Client")
-            {
-                var client = await HttpClient.GetFromJsonAsync<ClientDto>($"/api/Clients/by-email/{Uri.EscapeDataString(email)}");
-                userId = client?.UserId ?? 0;
-            }
-            else if (role == "Seller")
-            {
-                var seller = await HttpClient.GetFromJsonAsync<SellerDto>($"/api/Sellers/by-email/{Uri.EscapeDataString(email)}");
-                userId = seller?.SellerId ?? 0;
-            }
-            else
-            {
-                return;
-            }
-
-            if (userId != 0)
-            {
-                _cart = await CartService.GetCartAsync(userId);
-            }
-        }
-        catch (Exception ex)
-        {
-            _errorMessage = $"Error refreshing cart: {ex.Message}";
         }
     }
 

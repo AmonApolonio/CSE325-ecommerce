@@ -3,10 +3,12 @@
 @page "/login"
 
 @using frontend.Models
+@using frontend.Services
 @inject NavigationManager NavigationManager
 @inject HttpClient Http
 @inject IJSRuntime JSRuntime
 @inject CustomAuthStateProvider AuthStateProvider
+@inject ICartService CartService
 
 
 <PageTitle>Login - SharpCraft Shop</PageTitle>
@@ -51,6 +53,31 @@
 
                 // Atualiza estado de autenticação
                 AuthStateProvider.MarkUserAsAuthenticated(loginResponse.Token);
+
+                // Handle cart merge if user has an anonymous cart
+                try
+                {
+                    var anonymousCartIdStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "cartId");
+                    if (!string.IsNullOrEmpty(anonymousCartIdStr) && long.TryParse(anonymousCartIdStr, out var anonymousCartId))
+                    {
+                        Console.WriteLine($"Merging anonymous cart {anonymousCartId} with authenticated user");
+                        var mergedCart = await CartService.MergeCartAsync(anonymousCartId);
+                        
+                        // Update cartId in localStorage to the merged cart ID
+                        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "cartId", mergedCart.CartId.ToString());
+                        Console.WriteLine($"Cart merged successfully. New cartId: {mergedCart.CartId}");
+                    }
+                    else
+                    {
+                        // No anonymous cart, create a new one for the authenticated user
+                        Console.WriteLine("No anonymous cart found. A new authenticated cart will be created on first access.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: Error during cart merge: {ex.Message}");
+                    // Don't fail login if cart merge fails - user can still proceed
+                }
 
                 NavigationManager.NavigateTo("account");
             }
