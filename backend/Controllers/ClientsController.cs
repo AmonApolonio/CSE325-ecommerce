@@ -5,7 +5,7 @@ using backend.DTOs;
 
 namespace backend.Controllers
 {
-   [Route("api/[controller]")]
+    [Route("api/[controller]")]
     [ApiController]
     public class ClientsController : ControllerBase
     {
@@ -50,7 +50,7 @@ namespace backend.Controllers
         public async Task<ActionResult<Client>> GetClientById(long id)
         {
             // O FindAsync usa a chave primária, que é UserId
-            var client = await _context.Clients.Include(c => c.Carts).FirstOrDefaultAsync(c => c.UserId == id); 
+            var client = await _context.Clients.FindAsync(id); 
 
             if (client == null)
             {
@@ -125,7 +125,7 @@ namespace backend.Controllers
                 return BadRequest("Email is required.");
             }
 
-            var client = await _context.Clients.Include(c => c.Carts).FirstOrDefaultAsync(c => c.Email == email);
+            var client = await _context.Clients.FirstOrDefaultAsync(c => c.Email == email);
 
             if (client == null)
             {
@@ -155,15 +155,12 @@ namespace backend.Controllers
 
             // Mapeia APENAS os campos do DTO para o objeto existente
             existingClient.Name = detailsDto.Name;
-            existingClient.Email = detailsDto.Email;
             existingClient.PhoneNumber = detailsDto.PhoneNumber;
             existingClient.Address1 = detailsDto.Address1;
-            existingClient.Address2 = detailsDto.Address2;
-            existingClient.City = detailsDto.City;
-            existingClient.State = detailsDto.State;
-            existingClient.ZipCode = detailsDto.ZipCode;
-            existingClient.Country = detailsDto.Country;
+            // ... mapeie os outros campos de endereço aqui
 
+            // O Entity Framework rastreia as mudanças e atualiza apenas o que mudou.
+            // Não precisa de EntityState.Modified se você usou FindAsync() e alterou as propriedades.
             
             try
             {
