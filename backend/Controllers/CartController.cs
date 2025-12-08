@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using backend.BusinessLogic; 
 using System; 
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace backend.Controllers;
 
@@ -38,6 +39,7 @@ public class CartsController : ControllerBase
     // Returns the cart ID for the authenticated user, or creates one if not found.
     // =================================================================
     [HttpGet("user")]
+    [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<object>> GetUserCart()

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Data.Entities;
 using System.Linq;
+using Microsoft.AspNetCore.Authorization;
 
 namespace backend.Controllers
 {
@@ -18,8 +19,9 @@ namespace backend.Controllers
 
         // -------------------------------------------------------------
         // 1. POST: api/Categories (CREATE)
-        // -------------------------------------------------------------
+        // ---------------------------------------------------------
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<Category>> PostCategory([FromBody] Category category)
         {
             _context.Categories.Add(category); 

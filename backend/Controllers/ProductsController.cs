@@ -2,10 +2,9 @@
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore; 
-using backend.Data.Entities;  
+using backend.Data.Entities;  
 using System.Linq; // Needed for the Any() method
-
-namespace backend.Controllers
+using Microsoft.AspNetCore.Authorization;namespace backend.Controllers
 {
     [Route("api/[controller]")] // Defines the base route as /api/products
     [ApiController]
@@ -70,6 +69,7 @@ namespace backend.Controllers
         /// <param name="product">The product data to create.</param>
         /// <returns>The created product with generated ID.</returns>
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<Product>> PostProduct([FromBody] Product product)
         {
             product.ProductId = 0;
@@ -108,6 +108,7 @@ namespace backend.Controllers
         /// <param name="product">The updated product data.</param>
         /// <returns>No content if successful, or appropriate error status.</returns>
         [HttpPut("{id}")]
+        [Authorize]
         public async Task<IActionResult> PutProduct(long id, [FromBody] Product product)
         {
             // Check if the ID in the URL matches the ID in the request body
@@ -149,6 +150,7 @@ namespace backend.Controllers
         /// <param name="id">The product ID to delete.</param>
         /// <returns>No content if successful, or not found if product doesn't exist.</returns>
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<IActionResult> DeleteProduct(long id)
         {
             // 1. Find the product by ID
