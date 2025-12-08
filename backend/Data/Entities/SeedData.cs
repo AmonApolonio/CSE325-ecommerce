@@ -276,29 +276,6 @@ namespace backend.Data
 
                 context.Database.EnsureCreated();
                 
-                // Check if products table exists and has data
-                if (context.Products.Any())
-                {
-                    // Get the max ProductId from existing data
-                    var maxProductId = context.Products.Max(p => p.ProductId);
-                    
-                    // Reset the sequence to start after the max ID
-                    try
-                    {
-#pragma warning disable EF1002
-                        context.Database.ExecuteSqlRaw($"SELECT setval('products_product_id_seq', {maxProductId}, true)");
-#pragma warning restore EF1002
-                    }
-                    catch
-                    {
-                        // Sequence might not exist or already be correct, continue
-                    }
-                    
-                    return; // Exit early since data already exists
-                }
-                
-                // --- 3. SEEDING DE DADOS ---
-                
                 // Currencies e Categories não têm dependências
                 if (!context.Currencies.Any())
                 {
@@ -329,12 +306,6 @@ namespace backend.Data
                 if (!context.Products.Any())
                 {
                     context.Products.AddRange(GetProductSeedData());
-                    context.SaveChanges();
-                    
-                    var maxProductId = context.Products.Max(p => p.ProductId);
-#pragma warning disable EF1002
-                    context.Database.ExecuteSqlRaw($"SELECT setval('products_product_id_seq', {maxProductId}, true)");
-#pragma warning restore EF1002
                 }
 
                 // ProductImages depende de Product
