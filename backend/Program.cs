@@ -88,8 +88,9 @@ app.UseExceptionHandler(errorApp =>
         var response = new
         {
             message = "Internal Server Error",
-            detail = app.Environment.IsDevelopment() ? exception?.Message : null,
-            stackTrace = app.Environment.IsDevelopment() ? exception?.StackTrace : null
+            detail = exception?.Message,
+            stackTrace = exception?.StackTrace,
+            innerException = exception?.InnerException?.Message
         };
         
         await context.Response.WriteAsJsonAsync(response);
