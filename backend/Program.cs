@@ -94,15 +94,27 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 // =======================================================
-// 3. CORS Policy (Permitir Blazor durante DEV)
+// 3. CORS Policy (Allow Frontend in DEV and PROD)
 // =======================================================
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowBlazor", corsBuilder =>
     {
-        corsBuilder.WithOrigins("http://localhost:5026") // URL do Blazor WebAssembly
+        // Get allowed origins from configuration
+        var allowedOrigins = builder.Configuration.GetSection("AllowedCorsOrigins").Get<string[]>() 
+            ?? new[] { "https://amonapolonio.github.io", "http://localhost:5026", "https://localhost:5026" };
+        
+        // Also check environment variables
+        var envOrigins = Environment.GetEnvironmentVariable("ALLOWED_CORS_ORIGINS");
+        if (!string.IsNullOrEmpty(envOrigins))
+        {
+            allowedOrigins = envOrigins.Split(";", StringSplitOptions.RemoveEmptyEntries);
+        }
+        
+        corsBuilder.WithOrigins(allowedOrigins)
                    .AllowAnyHeader()
-                   .AllowAnyMethod();
+                   .AllowAnyMethod()
+                   .AllowCredentials();
     });
 });
 
