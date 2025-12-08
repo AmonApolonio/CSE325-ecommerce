@@ -1,7 +1,7 @@
 
 {
   "ConnectionStrings": {
-     "DefaultConnection": "Host=ep-divine-bread-ahx6ksrv-pooler.c-3.us-east-1.aws.neon.tech; Database=neondb; Username=neondb_owner; Password=npg_hDUMBeapKy26; Port=5432"
+     "DefaultConnection": "Host=ep-divine-bread-ahx6ksrv-pooler.c-3.us-east-1.aws.neon.tech; Database=neondb; Username=app_crud_user; Password=@eCommerce123456@; Port=5432"
   },
   "Logging": {
     "LogLevel": {
