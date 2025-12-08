@@ -15,6 +15,10 @@ public class ProductService : IProductService
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     }
 
+    /// <summary>
+    /// Retrieves all products from the API.
+    /// </summary>
+    /// <returns>List of all products.</returns>
     public async Task<List<ProductDto>> GetAllProductsAsync()
     {
         try
@@ -29,6 +33,13 @@ public class ProductService : IProductService
         }
     }
 
+    /// <summary>
+    /// Retrieves products with optional filtering.
+    /// </summary>
+    /// <param name="name">Optional product name filter.</param>
+    /// <param name="sellerId">Optional seller ID filter.</param>
+    /// <param name="categoryId">Optional category ID filter.</param>
+    /// <returns>List of filtered products.</returns>
     public async Task<List<ProductDto>> GetProductsAsync(string? name = null, long? sellerId = null, long? categoryId = null)
     {
         try

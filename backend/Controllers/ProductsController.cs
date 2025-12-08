@@ -21,6 +21,13 @@ namespace backend.Controllers
         // -------------------------------------------------------------
         // GET (All Products OR Filtered by Name, SellerId AND/OR CategoryId)
         // -------------------------------------------------------------
+        /// <summary>
+        /// Retrieves all products with optional filtering by name, seller ID, and/or category ID.
+        /// </summary>
+        /// <param name="name">Optional product name filter.</param>
+        /// <param name="sellerId">Optional seller ID filter.</param>
+        /// <param name="categoryId">Optional category ID filter.</param>
+        /// <returns>List of products matching the filter criteria.</returns>
         [HttpGet]
         // Rota: /api/Products?name=termo&sellerId=123&categoryId=456
         public async Task<ActionResult<IEnumerable<Product>>> GetProducts(
@@ -57,6 +64,11 @@ namespace backend.Controllers
         // -------------------------------------------------------------
         // POST Method to CREATE a new product
         // -------------------------------------------------------------
+        /// <summary>
+        /// Creates a new product in the database.
+        /// </summary>
+        /// <param name="product">The product data to create.</param>
+        /// <returns>The created product with generated ID.</returns>
         [HttpPost]
         public async Task<ActionResult<Product>> PostProduct([FromBody] Product product)
         {
@@ -89,6 +101,12 @@ namespace backend.Controllers
         // -------------------------------------------------------------
         // 🔑 PUT Method to UPDATE an existing product
         // -------------------------------------------------------------
+        /// <summary>
+        /// Updates an existing product by ID.
+        /// </summary>
+        /// <param name="id">The product ID to update.</param>
+        /// <param name="product">The updated product data.</param>
+        /// <returns>No content if successful, or appropriate error status.</returns>
         [HttpPut("{id}")]
         public async Task<IActionResult> PutProduct(long id, [FromBody] Product product)
         {
@@ -125,6 +143,11 @@ namespace backend.Controllers
         // -------------------------------------------------------------
         // 🔑 DELETE Method to DELETE a product
         // -------------------------------------------------------------
+        /// <summary>
+        /// Deletes a product by ID.
+        /// </summary>
+        /// <param name="id">The product ID to delete.</param>
+        /// <returns>No content if successful, or not found if product doesn't exist.</returns>
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProduct(long id)
         {

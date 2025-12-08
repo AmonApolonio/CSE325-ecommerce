@@ -18,7 +18,11 @@ namespace backend.Controllers
             _tokenService = tokenService;
         }
 
-        
+        /// <summary>
+        /// Authenticates a user (Client or Seller) and returns a JWT token.
+        /// </summary>
+        /// <param name="request">The login request containing email, password, and user type.</param>
+        /// <returns>JWT token and user information if authentication succeeds.</returns>
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {

@@ -23,6 +23,9 @@
     private string? _errorMessage;
     private string? _userRole;
 
+    /// <summary>
+    /// Initializes the component and loads products and categories.
+    /// </summary>
     protected override async Task OnInitializedAsync()
     {
         _isLoading = true;
@@ -56,6 +59,9 @@
         }
     }
 
+    /// <summary>
+    /// Initializes an anonymous cart for non-authenticated users.
+    /// </summary>
     private async Task InitializeAnonymousCart()
     {
         try
@@ -79,11 +85,20 @@
         catch { }
     }
 
+    /// <summary>
+    /// Handles product click navigation to item detail page.
+    /// </summary>
+    /// <param name="productId">The ID of the product to navigate to.</param>
     private void HandleProductClick(long productId)
     {
         NavigationManager.NavigateTo($"item/{productId}");
     }
 
+    /// <summary>
+    /// Handles adding a product to the user's cart.
+    /// Requires authentication and redirects to login if not authenticated.
+    /// </summary>
+    /// <param name="productId">The ID of the product to add to cart.</param>
     private async Task HandleAddToCart(long productId)
     {
         try
@@ -116,6 +131,10 @@
         }
     }
 
+    /// <summary>
+    /// Handles category click navigation to search page with category filter.
+    /// </summary>
+    /// <param name="categoryId">The ID of the category to filter by.</param>
     private void HandleCategoryClick(long categoryId)
     {
         NavigationManager.NavigateTo($"search?categoryId={categoryId}");
