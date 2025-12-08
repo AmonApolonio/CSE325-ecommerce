@@ -56,6 +56,20 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 // 2. DATABASE CONTEXT
 // =======================================================
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrEmpty(connectionString))
+{
+    // Try to build connection string from individual env vars
+    var dbHost = builder.Configuration["DB_HOST"];
+    var dbName = builder.Configuration["DB_NAME"];
+    var dbUser = builder.Configuration["DB_USER"];
+    var dbPassword = builder.Configuration["DB_PASSWORD"];
+    
+    if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbName) && !string.IsNullOrEmpty(dbUser))
+    {
+        connectionString = $"Host={dbHost};Database={dbName};Username={dbUser};Password={dbPassword ?? ""};Port=5432";
+    }
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -123,6 +137,28 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Diagnostics endpoint
+app.MapGet("/diagnostics", (IConfiguration config) =>
+{
+    var connStr = config.GetConnectionString("DefaultConnection");
+    var dbHost = config["DB_HOST"];
+    var dbName = config["DB_NAME"];
+    var dbUser = config["DB_USER"];
+    var jwtKey = config["Jwt:Key"];
+    
+    return Results.Ok(new
+    {
+        environment = builder.Environment.EnvironmentName,
+        connectionStringConfigured = !string.IsNullOrEmpty(connStr),
+        connectionStringPreview = connStr != null ? $"{connStr[..Math.Min(30, connStr.Length)]}..." : "NOT FOUND",
+        dbEnvVarsConfigured = !string.IsNullOrEmpty(dbHost),
+        dbHost = dbHost,
+        dbName = dbName,
+        dbUser = dbUser,
+        jwtKeyConfigured = !string.IsNullOrEmpty(jwtKey)
+    });
+});
 
 // Health check endpoint
 app.MapGet("/health", async (AppDbContext context) =>
