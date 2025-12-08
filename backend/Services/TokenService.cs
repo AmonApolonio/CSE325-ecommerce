@@ -22,7 +22,7 @@ public class TokenService : ITokenService
     {
         var key = _config["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is missing");
         var issuer = _config["Jwt:Issuer"];
-        var audiences = _config.GetSection("Jwt:Audiences").Get<string[]>();
+        var audiences = _config.GetSection("Jwt:Audiences").Get<string[]>() ?? new[] { issuer };
 
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
