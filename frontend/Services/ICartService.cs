@@ -8,6 +8,12 @@ namespace frontend.Services;
 public interface ICartService
 {
     /// <summary>
+    /// Gets or creates the authenticated user's cart from the server.
+    /// This should be called for authenticated users instead of storing cart ID in localStorage.
+    /// </summary>
+    Task<CartDto> GetUserCartAsync();
+
+    /// <summary>
     /// Creates a new anonymous cart. Must be called before logging in to preserve cart items.
     /// The returned cart ID should be stored and used to merge with user account after login.
     /// </summary>

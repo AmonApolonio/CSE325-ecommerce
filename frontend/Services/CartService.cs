@@ -7,10 +7,9 @@ namespace frontend.Services;
 /// <summary>
 /// Cart service implementation - handles shopping cart operations with backend persistence
 /// Flow:
-/// 1. Anonymous users: CreateAnonymousCartAsync() -> stores cartId in localStorage
-/// 2. On login: MergeCartAsync(cartId) -> links anonymous cart to user account
-/// 3. Authenticated users: GetCartAsync(userId) -> retrieves user's cart
-/// 4. Add/Update/Remove: Use cartId operations
+/// 1. Authenticated users: GetUserCartAsync() -> retrieves or creates user's cart from server
+/// 2. Anonymous users: CreateAnonymousCartAsync() -> stores cartId in localStorage
+/// 3. On login: MergeCartAsync(cartId) -> links anonymous cart to user account
 /// </summary>
 public class CartService : ICartService
 {
@@ -24,6 +23,46 @@ public class CartService : ICartService
         
         // Use the named "BackendApi" client which includes the JWT handler for authentication
         _httpClient = httpClientFactory.CreateClient("BackendApi");
+    }
+
+    /// <summary>
+    /// Gets or creates the authenticated user's cart from the server.
+    /// This fetches the cart dynamically for each user, ensuring cart is tied to the authenticated user.
+    /// </summary>
+    public async Task<CartDto> GetUserCartAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("/api/Carts/user");
+            response.EnsureSuccessStatusCode();
+            
+            var cartData = await response.Content.ReadFromJsonAsync<CartResponseData>();
+            if (cartData == null)
+                throw new InvalidOperationException("Failed to retrieve user cart");
+            
+            Console.WriteLine($"Retrieved user cart with ID: {cartData.CartId}");
+            
+            // Convert to CartDto
+            return new CartDto
+            {
+                CartId = cartData.CartId,
+                UserId = cartData.UserId,
+                CreatedDate = cartData.CreatedDate,
+                UpdatedDate = cartData.UpdatedDate,
+                CartItems = cartData.CartItems?.Select(ci => new CartItemDto
+                {
+                    CartItemId = ci.CartItemId,
+                    CartId = ci.CartId,
+                    ProductId = ci.ProductId,
+                    Quantity = (double)ci.Quantity
+                }).ToList() ?? new List<CartItemDto>()
+            };
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Error retrieving user cart: {ex.Message}");
+            throw;
+        }
     }
 
     /// <summary>
@@ -229,6 +268,23 @@ public class Cart
 }
 
 public class CartItem
+{
+    public long CartItemId { get; set; }
+    public long CartId { get; set; }
+    public long ProductId { get; set; }
+    public decimal Quantity { get; set; }
+}
+
+public class CartResponseData
+{
+    public long CartId { get; set; }
+    public long? UserId { get; set; }
+    public DateTime CreatedDate { get; set; }
+    public DateTime? UpdatedDate { get; set; }
+    public List<CartItemResponse>? CartItems { get; set; }
+}
+
+public class CartItemResponse
 {
     public long CartItemId { get; set; }
     public long CartId { get; set; }

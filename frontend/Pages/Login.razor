@@ -63,20 +63,26 @@
                         Console.WriteLine($"Merging anonymous cart {anonymousCartId} with authenticated user");
                         var mergedCart = await CartService.MergeCartAsync(anonymousCartId);
                         
-                        // Update cartId in localStorage to the merged cart ID
-                        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "cartId", mergedCart.CartId.ToString());
-                        Console.WriteLine($"Cart merged successfully. New cartId: {mergedCart.CartId}");
+                        // Remove cartId from localStorage - it's no longer needed for authenticated users
+                        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "cartId");
+                        Console.WriteLine($"Cart merged successfully. Removed cartId from localStorage.");
                     }
                     else
                     {
-                        // No anonymous cart, create a new one for the authenticated user
-                        Console.WriteLine("No anonymous cart found. A new authenticated cart will be created on first access.");
+                        // No anonymous cart, remove any stale cartId from localStorage
+                        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "cartId");
+                        Console.WriteLine("No anonymous cart found. Authenticated user cart will be fetched dynamically.");
                     }
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Warning: Error during cart merge: {ex.Message}");
                     // Don't fail login if cart merge fails - user can still proceed
+                    try
+                    {
+                        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "cartId");
+                    }
+                    catch { }
                 }
 
                 NavigationManager.NavigateTo("account");

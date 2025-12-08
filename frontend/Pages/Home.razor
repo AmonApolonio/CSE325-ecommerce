@@ -49,7 +49,6 @@
         catch (Exception ex)
         {
             _errorMessage = $"Error loading data: {ex.Message}";
-            Console.WriteLine(_errorMessage);
         }
         finally
         {
@@ -61,41 +60,23 @@
     {
         try
         {
-            // Check if user is authenticated
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             
             if (authState.User.Identity?.IsAuthenticated ?? false)
             {
-                // User is authenticated, cartId should have been set during login merge
-                var cartIdStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "cartId");
-                if (!string.IsNullOrEmpty(cartIdStr))
-                {
-                    Console.WriteLine($"User is authenticated with cartId: {cartIdStr}");
-                }
                 return;
             }
 
-            // Check if anonymous user already has a cartId
             var existingCartIdStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "cartId");
             if (!string.IsNullOrEmpty(existingCartIdStr) && long.TryParse(existingCartIdStr, out var existingCartId) && existingCartId > 0)
             {
-                Console.WriteLine($"Anonymous user already has cartId: {existingCartId}");
                 return;
             }
 
-            // Create a new anonymous cart
-            Console.WriteLine("Creating new anonymous cart for user");
             var cartId = await CartService.CreateAnonymousCartAsync();
-            
-            // Store cartId in localStorage
             await JSRuntime.InvokeVoidAsync("localStorage.setItem", "cartId", cartId.ToString());
-            Console.WriteLine($"Anonymous cart created and stored: {cartId}");
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error initializing anonymous cart: {ex.Message}");
-            // Don't throw - this is not critical for page load
-        }
+        catch { }
     }
 
     private void HandleProductClick(long productId)
@@ -122,40 +103,16 @@
                 return;
             }
 
-            long userId;
-            if (role == "Client")
-            {
-                var client = await HttpClient.GetFromJsonAsync<ClientDto>($"/api/Clients/by-email/{Uri.EscapeDataString(email)}");
-                if (client == null)
-                {
-                    _errorMessage = "User not found.";
-                    return;
-                }
-                userId = client.UserId;
-            }
-            else if (role == "Seller")
-            {
-                var seller = await HttpClient.GetFromJsonAsync<SellerDto>($"/api/Sellers/by-email/{Uri.EscapeDataString(email)}");
-                if (seller == null)
-                {
-                    _errorMessage = "User not found.";
-                    return;
-                }
-                userId = seller.SellerId;
-            }
-            else
-            {
-                _errorMessage = "Invalid user role.";
-                return;
-            }
+            // Get the authenticated user's cart
+            var userCart = await CartService.GetUserCartAsync();
+            var cartId = userCart.CartId;
 
-            await CartService.AddToCartAsync(userId, productId, 1);
+            await CartService.AddToCartAsync(cartId, productId, 1);
             // Optionally, show success message or update UI
         }
         catch (Exception ex)
         {
             _errorMessage = $"Error adding to cart: {ex.Message}";
-            Console.WriteLine(_errorMessage);
         }
     }
 

@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
+@using System.Net.Http.Json
 
 @inject ICartService CartService
 @inject IProductService ProductService
@@ -21,6 +22,7 @@
     private string? _errorMessage;
     private Dictionary<long, ProductDto?> _productCache = new();
     private string? _userRole;
+    private decimal _cartTotal = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -46,60 +48,18 @@
 
         try
         {
-            // Try to get cartId from localStorage (set after login or during anonymous browsing)
-            var cartIdFromStorage = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "cartId");
-            if (!string.IsNullOrEmpty(cartIdFromStorage) && long.TryParse(cartIdFromStorage, out var cartId))
-            {
-                _cartId = cartId;
-                Console.WriteLine($"Retrieved cartId from localStorage: {_cartId}");
-                
-                // Fetch the cart using the cartId
-                await RefreshCartByCartId();
-            }
-            else
-            {
-                // No cartId in localStorage - create new cart and merge with authenticated user
-                Console.WriteLine("No cartId found in localStorage. Creating new cart for authenticated user...");
-                await CreateAndMergeCartForAuthenticatedUser();
-            }
-        }
-        catch (Exception ex)
-        {
-            _errorMessage = $"Error loading cart: {ex.Message}";
-            Console.WriteLine(_errorMessage);
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-    }
-
-    private async Task CreateAndMergeCartForAuthenticatedUser()
-    {
-        try
-        {
-            // Step 1: Create a new anonymous cart
-            Console.WriteLine("Step 1: Creating new anonymous cart...");
-            var newCartId = await CartService.CreateAnonymousCartAsync();
-            Console.WriteLine($"Created anonymous cart with ID: {newCartId}");
-
-            // Step 2: Merge the anonymous cart with the authenticated user
-            Console.WriteLine($"Step 2: Merging cart {newCartId} with authenticated user...");
-            var mergedCart = await CartService.MergeCartAsync(newCartId);
-            Console.WriteLine($"Cart merged successfully. Merged cartId: {mergedCart.CartId}");
-
-            // Step 3: Store the merged cartId in localStorage
-            _cartId = mergedCart.CartId;
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "cartId", _cartId.ToString());
-            Console.WriteLine($"Stored merged cartId in localStorage: {_cartId}");
-
-            // Step 4: Load the cart
+            // Get the authenticated user's cart from the server
+            var userCart = await CartService.GetUserCartAsync();
+            _cartId = userCart.CartId;
             await RefreshCartByCartId();
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Error creating cart for authenticated user: {ex.Message}";
-            Console.WriteLine(_errorMessage);
+            _errorMessage = $"Error loading cart: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 
@@ -113,15 +73,37 @@
 
         try
         {
-            // Call the get cart endpoint with the cartId
             var response = await HttpClient.GetAsync($"/api/Carts/{_cartId}");
             if (response.IsSuccessStatusCode)
             {
-                // The response contains { Cart, Total } structure
-                Console.WriteLine($"Cart fetched successfully for cartId: {_cartId}");
+                _cart = await response.Content.ReadFromJsonAsync<CartDto>();
                 
-                // For now, we'll load cart items directly
-                _cart = new CartDto { CartId = _cartId };
+                if (_cart?.CartItems != null)
+                {
+                    foreach (var cartItem in _cart.CartItems)
+                    {
+                        if (!_productCache.ContainsKey(cartItem.ProductId))
+                        {
+                            try
+                            {
+                                var productResponse = await HttpClient.GetAsync($"/api/Products/{cartItem.ProductId}");
+                                if (productResponse.IsSuccessStatusCode)
+                                {
+                                    var product = await productResponse.Content.ReadFromJsonAsync<ProductDto>();
+                                    _productCache[cartItem.ProductId] = product;
+                                    cartItem.Product = product;
+                                }
+                            }
+                            catch { }
+                        }
+                        else
+                        {
+                            cartItem.Product = _productCache[cartItem.ProductId];
+                        }
+                    }
+                }
+                
+                _cartTotal = CalculateTotal();
                 _errorMessage = null;
             }
             else
@@ -132,8 +114,17 @@
         catch (Exception ex)
         {
             _errorMessage = $"Error refreshing cart: {ex.Message}";
-            Console.WriteLine(_errorMessage);
         }
+    }
+
+    private decimal CalculateTotal()
+    {
+        if (_cart?.CartItems == null || _cart.CartItems.Count == 0)
+            return 0;
+
+        return _cart.CartItems.Sum(item => 
+            (item.Product?.Price ?? 0) / 100.0m * (decimal)item.Quantity
+        );
     }
 
     private async Task UpdateQuantity(long cartItemId, double newQuantity)
@@ -187,12 +178,7 @@
 
     private decimal GetCartTotal()
     {
-        if (_cart?.CartItems == null || _cart.CartItems.Count == 0)
-            return 0;
-
-        return _cart.CartItems.Sum(item => 
-            (item.Product?.Price ?? 0) / 100.0m * (decimal)item.Quantity
-        );
+        return _cartTotal;
     }
 }
 
