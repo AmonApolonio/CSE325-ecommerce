@@ -5,6 +5,7 @@ using backend.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.AspNetCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -73,6 +74,28 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Error handling middleware - to catch and log exceptions
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var exceptionHandlerPathFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+        var exception = exceptionHandlerPathFeature?.Error;
+        
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+        
+        var response = new
+        {
+            message = "Internal Server Error",
+            detail = app.Environment.IsDevelopment() ? exception?.Message : null,
+            stackTrace = app.Environment.IsDevelopment() ? exception?.StackTrace : null
+        };
+        
+        await context.Response.WriteAsJsonAsync(response);
+    });
+});
+
 // Redireciona para HTTPS
 app.UseHttpsRedirection();
 
@@ -84,5 +107,35 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Health check endpoint
+app.MapGet("/health", async (AppDbContext context) =>
+{
+    try
+    {
+        // Test database connection
+        await context.Database.ExecuteSqlAsync($"SELECT 1");
+        return Results.Ok(new { status = "healthy", database = "connected" });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { status = "unhealthy", error = ex.Message }, statusCode: 500);
+    }
+});
+
+// Test Products endpoint
+app.MapGet("/test-products", async (AppDbContext context) =>
+{
+    try
+    {
+        var count = await context.Products.CountAsync();
+        var sample = await context.Products.Take(1).ToListAsync();
+        return Results.Ok(new { count, sample });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { error = ex.Message, stackTrace = ex.StackTrace }, statusCode: 500);
+    }
+});
 
 app.Run();
