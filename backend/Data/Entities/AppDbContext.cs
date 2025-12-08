@@ -242,7 +242,9 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("products");
 
-            entity.Property(e => e.ProductId).HasColumnName("product_id");
+            entity.Property(e => e.ProductId)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("product_id");
             entity.Property(e => e.CategoryId)
                 .HasDefaultValue(0L)
                 .HasColumnName("category_id");

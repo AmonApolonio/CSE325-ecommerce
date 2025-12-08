@@ -60,6 +60,8 @@ namespace backend.Controllers
         [HttpPost]
         public async Task<ActionResult<Product>> PostProduct([FromBody] Product product)
         {
+            product.ProductId = 0;
+            
             // 1. Adds the product to the database context
             _context.Products.Add(product);
             

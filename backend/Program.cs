@@ -1,6 +1,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using backend.Data.Entities;
+using backend.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -60,6 +61,12 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var serviceProvider = scope.ServiceProvider;
+    SeedData.Initialize(serviceProvider);
+}
 
 // =======================================================
 // MIDDLEWARE
