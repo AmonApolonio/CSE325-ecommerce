@@ -12,6 +12,7 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject HttpClient HttpClient
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Home - SharpCraft Shop</PageTitle>
 
@@ -20,6 +21,7 @@
     private List<CategoryDto> _categories = new();
     private bool _isLoading = true;
     private string? _errorMessage;
+    private string? _userRole;
 
     protected override async Task OnInitializedAsync()
     {
@@ -28,6 +30,13 @@
 
         try
         {
+            // Get user role
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            _userRole = authState.User.FindFirst(ClaimTypes.Role)?.Value;
+
+            // Initialize cart for anonymous users
+            await InitializeAnonymousCart();
+
             // Fetch products and categories in parallel
             var productsTask = ProductService.GetAllProductsAsync();
             var categoriesTask = CategoryService.GetAllCategoriesAsync();
@@ -40,12 +49,34 @@
         catch (Exception ex)
         {
             _errorMessage = $"Error loading data: {ex.Message}";
-            Console.WriteLine(_errorMessage);
         }
         finally
         {
             _isLoading = false;
         }
+    }
+
+    private async Task InitializeAnonymousCart()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            
+            if (authState.User.Identity?.IsAuthenticated ?? false)
+            {
+                return;
+            }
+
+            var existingCartIdStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "cartId");
+            if (!string.IsNullOrEmpty(existingCartIdStr) && long.TryParse(existingCartIdStr, out var existingCartId) && existingCartId > 0)
+            {
+                return;
+            }
+
+            var cartId = await CartService.CreateAnonymousCartAsync();
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "cartId", cartId.ToString());
+        }
+        catch { }
     }
 
     private void HandleProductClick(long productId)
@@ -72,40 +103,16 @@
                 return;
             }
 
-            long userId;
-            if (role == "Client")
-            {
-                var client = await HttpClient.GetFromJsonAsync<ClientDto>($"/api/Clients/by-email/{Uri.EscapeDataString(email)}");
-                if (client == null)
-                {
-                    _errorMessage = "User not found.";
-                    return;
-                }
-                userId = client.UserId;
-            }
-            else if (role == "Seller")
-            {
-                var seller = await HttpClient.GetFromJsonAsync<SellerDto>($"/api/Sellers/by-email/{Uri.EscapeDataString(email)}");
-                if (seller == null)
-                {
-                    _errorMessage = "User not found.";
-                    return;
-                }
-                userId = seller.SellerId;
-            }
-            else
-            {
-                _errorMessage = "Invalid user role.";
-                return;
-            }
+            // Get the authenticated user's cart
+            var userCart = await CartService.GetUserCartAsync();
+            var cartId = userCart.CartId;
 
-            await CartService.AddToCartAsync(userId, productId, 1);
+            await CartService.AddToCartAsync(cartId, productId, 1);
             // Optionally, show success message or update UI
         }
         catch (Exception ex)
         {
             _errorMessage = $"Error adding to cart: {ex.Message}";
-            Console.WriteLine(_errorMessage);
         }
     }
 
@@ -166,13 +173,16 @@ else
                             <p class="text-sm text-gray-600 mb-3 line-clamp-2">@product.Description</p>
                             <div class="flex justify-between items-center">
                                 <span class="text-lg font-bold text-orange-500">$@product.GetPriceAsDecimal().ToString("F2")</span>
-                                <button
-                                    @onclick="@(async () => await HandleAddToCart(product.ProductId))"
-                                    @onclick:stopPropagation="true"
-                                    class="bg-orange-400 hover:bg-orange-500 text-white px-3 py-2 rounded transition-colors"
-                                >
-                                    <i class="fa-solid fa-cart-plus"></i>
-                                </button>
+                                @if (_userRole != "Seller")
+                                {
+                                    <button
+                                        @onclick="@(async () => await HandleAddToCart(product.ProductId))"
+                                        @onclick:stopPropagation="true"
+                                        class="bg-orange-400 hover:bg-orange-500 text-white px-3 py-2 rounded transition-colors"
+                                    >
+                                        <i class="fa-solid fa-cart-plus"></i>
+                                    </button>
+                                }
                             </div>
                         </div>
                     }

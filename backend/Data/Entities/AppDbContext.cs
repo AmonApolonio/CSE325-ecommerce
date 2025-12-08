@@ -64,31 +64,32 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.User).WithMany(p => p.Carts)
                 .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("cart_user_id_fkey");
         });
 
         modelBuilder.Entity<CartItem>(entity =>
         {
-            entity.HasKey(e => new { e.CartItemId, e.Quantity }).HasName("cart_items_pkey");
+            entity.HasKey(e => new { e.CartId, e.ProductId }).HasName("cart_items_pkey");
 
             entity.ToTable("cart_items");
 
             entity.Property(e => e.CartItemId)
                 .ValueGeneratedOnAdd()
-                .HasColumnName("cart_item");
+                .HasColumnName("cart_item_id");
             entity.Property(e => e.Quantity).HasColumnName("quantity");
             entity.Property(e => e.CartId).HasColumnName("cart_id");
             entity.Property(e => e.ProductId).HasColumnName("product_id");
 
             entity.HasOne(d => d.Cart).WithMany(p => p.CartItems)
                 .HasForeignKey(d => d.CartId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("cart_items_cart_id_fkey");
 
             entity.HasOne(d => d.Product).WithMany(p => p.CartItems)
                 .HasForeignKey(d => d.ProductId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("cart_items_product_id_fkey");
         });
 

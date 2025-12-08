@@ -32,7 +32,7 @@ namespace backend.Controllers
 
                 if (client != null)
                 {
-                    var token = _tokenService.GenerateToken(client.Email, "Client");
+                    var token = _tokenService.GenerateToken(client.Email, "Client", client.UserId);
                     return Ok(new LoginResponse
                     {
                         Token = token,
@@ -48,7 +48,7 @@ namespace backend.Controllers
 
                 if (seller != null)
                 {
-                    var token = _tokenService.GenerateToken(seller.Email, "Seller");
+                    var token = _tokenService.GenerateToken(seller.Email, "Seller", seller.SellerId);
                     return Ok(new LoginResponse
                     {
                         Token = token,

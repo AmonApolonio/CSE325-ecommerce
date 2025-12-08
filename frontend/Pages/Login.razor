@@ -3,10 +3,12 @@
 @page "/login"
 
 @using frontend.Models
+@using frontend.Services
 @inject NavigationManager NavigationManager
 @inject HttpClient Http
 @inject IJSRuntime JSRuntime
 @inject CustomAuthStateProvider AuthStateProvider
+@inject ICartService CartService
 
 
 <PageTitle>Login - SharpCraft Shop</PageTitle>
@@ -17,6 +19,7 @@
 
     private string _userType = "Client"; // Valor padrão
     private string _errorMessage = string.Empty;
+    private bool showPassword = false;
 
     
     public class LoginResponse
@@ -50,6 +53,37 @@
 
                 // Atualiza estado de autenticação
                 AuthStateProvider.MarkUserAsAuthenticated(loginResponse.Token);
+
+                // Handle cart merge if user has an anonymous cart
+                try
+                {
+                    var anonymousCartIdStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "cartId");
+                    if (!string.IsNullOrEmpty(anonymousCartIdStr) && long.TryParse(anonymousCartIdStr, out var anonymousCartId))
+                    {
+                        Console.WriteLine($"Merging anonymous cart {anonymousCartId} with authenticated user");
+                        var mergedCart = await CartService.MergeCartAsync(anonymousCartId);
+                        
+                        // Remove cartId from localStorage - it's no longer needed for authenticated users
+                        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "cartId");
+                        Console.WriteLine($"Cart merged successfully. Removed cartId from localStorage.");
+                    }
+                    else
+                    {
+                        // No anonymous cart, remove any stale cartId from localStorage
+                        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "cartId");
+                        Console.WriteLine("No anonymous cart found. Authenticated user cart will be fetched dynamically.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: Error during cart merge: {ex.Message}");
+                    // Don't fail login if cart merge fails - user can still proceed
+                    try
+                    {
+                        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "cartId");
+                    }
+                    catch { }
+                }
 
                 NavigationManager.NavigateTo("account");
             }
@@ -93,9 +127,14 @@
                 <!-- Password -->
                 <div>
                     <label class="block text-sm text-gray-600 font-semibold mb-2">Password</label>
-                    <input type="password" placeholder="••••••••"
-                           class="w-full px-4 py-2 rounded-lg border-2 border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300/50"
-                           @bind="_password" />
+                    <div class="relative">
+                        <input type="@(showPassword ? "text" : "password")" placeholder="••••••••"
+                               class="w-full px-4 py-2 rounded-lg border-2 border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300/50 pr-10"
+                               @bind="_password" />
+                        <button type="button" class="absolute inset-y-0 right-0 pr-3 flex items-center" @onclick="() => showPassword = !showPassword">
+                            <i class="@(showPassword ? "fas fa-eye-slash" : "fas fa-eye")"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- User Type -->

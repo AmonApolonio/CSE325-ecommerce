@@ -6,7 +6,7 @@ using System.Text;
 
 public interface ITokenService
 {
-    string GenerateToken(string email, string role);
+    string GenerateToken(string email, string role, long userId);
 }
 
 public class TokenService : ITokenService
@@ -18,7 +18,7 @@ public class TokenService : ITokenService
         _config = config;
     }
 
-    public string GenerateToken(string email, string role)
+    public string GenerateToken(string email, string role, long userId)
     {
         var key = _config["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is missing");
         var issuer = _config["Jwt:Issuer"];
@@ -33,6 +33,7 @@ public class TokenService : ITokenService
             new Claim(JwtRegisteredClaimNames.Sub, email),
             new Claim(ClaimTypes.Email, email),
             new Claim(ClaimTypes.Role, role),
+            new Claim("UserId", userId.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 

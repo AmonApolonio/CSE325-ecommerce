@@ -2,10 +2,13 @@
 @using frontend.Services
 @using frontend.Models.Dtos
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 
 @inject IProductService ProductService
 @inject ISellerService SellerService
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Product Details - SharpCraft Shop</PageTitle>
 
@@ -17,6 +20,7 @@
     private SellerDto? _seller;
     private bool _isLoading = true;
     private string? _errorMessage;
+    private string? _userRole;
 
     protected override async Task OnInitializedAsync()
     {
@@ -24,6 +28,10 @@
         _errorMessage = null;
         try
         {
+            // Get user role
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            _userRole = authState.User.FindFirst(ClaimTypes.Role)?.Value;
+
             if (!string.IsNullOrEmpty(ProductId) && long.TryParse(ProductId, out var productId) && productId > 0)
             {
                 _product = await ProductService.GetProductByIdAsync(productId);
@@ -133,12 +141,15 @@ else
                     <p class="text-gray-800">@_product.Inventory units available</p>
                 </div>
 
-                <button 
-                    class="w-full py-3 px-4 rounded-lg font-semibold text-white bg-orange-400 hover:bg-orange-500 transition-all"
-                    @onclick="HandleAddToCart"
-                >
-                    <i class="fas fa-shopping-cart mr-2"></i>Add to Cart
-                </button>
+                @if (_userRole != "Seller")
+                {
+                    <button 
+                        class="w-full py-3 px-4 rounded-lg font-semibold text-white bg-orange-400 hover:bg-orange-500 transition-all"
+                        @onclick="HandleAddToCart"
+                    >
+                        <i class="fas fa-shopping-cart mr-2"></i>Add to Cart
+                    </button>
+                }
             </div>
         </div>
 
@@ -168,9 +179,6 @@ else
                             <h3 class="text-xl font-bold text-gray-800">@_seller.Name</h3>
                             <p class="text-gray-600 mb-2">@_seller.AboutMe</p>
                             <div class="flex items-center gap-4">
-                                <div>
-                                    <span class="text-gray-600">Commission Rate: @_seller.CommisionRate%</span>
-                                </div>
                                 @if (!string.IsNullOrEmpty(_seller.Email))
                                 {
                                     <span class="text-gray-600">@_seller.Email</span>

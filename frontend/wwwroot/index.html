@@ -5,7 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SharpCraft Shop - Marketplace for Handmade Crafts</title>
-    <base href="/CSE325-ecommerce/" />
+    <base href="/" />
+    <script>
+        (function() {
+            var path = window.location.pathname;
+            var baseHref = path.endsWith('/') ? path : path.substring(0, path.lastIndexOf('/') + 1);
+            document.querySelector('base').setAttribute('href', baseHref);
+        })();
+    </script>
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     

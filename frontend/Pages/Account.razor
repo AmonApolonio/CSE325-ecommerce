@@ -7,6 +7,10 @@
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @using Microsoft.AspNetCore.Components.Forms
+@using frontend.Services
+@using frontend.Models.Dtos
+@inject IProductService ProductService
+@inject ICategoryService CategoryService
 
 
 
@@ -18,6 +22,12 @@
     private string _role = string.Empty;
     private string _message = string.Empty; // Mensagem de feedback
     private bool _isError = false;
+    private string _activeTab = "profile"; // New: track active tab
+    private List<ProductDto> _sellerProducts = new(); // New: for seller products
+    private bool _productsLoading = false; // New: loading state for products
+    private bool _showAddProductModal = false; // New: for add product modal
+    private ProductDto _newProduct = new(); // New: for new product form
+    private List<CategoryDto> _categories = new(); // New: for categories dropdown
 
     private ClientProfile _client = new();
     private SellerProfile _seller = new();
@@ -63,6 +73,8 @@
                     var result = await response.Content.ReadFromJsonAsync<SellerProfile>();
                     if(result != null) _seller = result;
                 }
+                // Load categories for the add product modal
+                _categories = await CategoryService.GetAllCategoriesAsync();
             }
         }
         catch (Exception ex)
@@ -150,6 +162,91 @@
                 InvokeAsync(StateHasChanged); 
             });
         });
+    }
+
+    // =================================================================
+    // Load Seller Products
+    // =================================================================
+    private async Task LoadSellerProducts()
+    {
+        if (_role != "Seller" || _seller.SellerId == 0) return;
+
+        _productsLoading = true;
+        try
+        {
+            _sellerProducts = await ProductService.GetProductsAsync(sellerId: _seller.SellerId);
+        }
+        catch (Exception ex)
+        {
+            ShowMessage($"Error loading products: {ex.Message}", true);
+        }
+        finally
+        {
+            _productsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    // =================================================================
+    // Handle Tab Change
+    // =================================================================
+    private async Task SetActiveTab(string tab)
+    {
+        _activeTab = tab;
+        if (tab == "products" && _sellerProducts.Count == 0)
+        {
+            await LoadSellerProducts();
+        }
+        StateHasChanged();
+    }
+
+    // =================================================================
+    // Open Add Product Modal
+    // =================================================================
+    private void OpenAddProductModal()
+    {
+        _newProduct = new ProductDto 
+        { 
+            SellerId = _seller.SellerId,
+            CartItems = new List<CartItemDto>(),
+            OrdersProducts = new List<OrdersProductDto>(),
+            Seller = null
+        };
+        // Set default category if available
+        if (_categories.Any())
+        {
+            _newProduct.CategoryId = _categories.First().CategoryId;
+        }
+        _showAddProductModal = true;
+        StateHasChanged();
+    }
+
+    // =================================================================
+    // Close Add Product Modal
+    // =================================================================
+    private void CloseAddProductModal()
+    {
+        _showAddProductModal = false;
+        _newProduct = new ProductDto();
+        StateHasChanged();
+    }
+
+    // =================================================================
+    // Add New Product
+    // =================================================================
+    private async Task AddNewProduct()
+    {
+        try
+        {
+            await ProductService.CreateProductAsync(_newProduct);
+            ShowMessage("Product added successfully!", false);
+            CloseAddProductModal();
+            await LoadSellerProducts(); // Refresh the list
+        }
+        catch (Exception ex)
+        {
+            ShowMessage($"Error adding product: {ex.Message}", true);
+        }
     }
 
     public class ClientProfile
@@ -278,10 +375,15 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div class="md:col-span-1">
                 <div class="bg-orange-50 border-2 border-orange-300/50 rounded-lg overflow-hidden flex flex-col">
-                    <a href="account" class="p-3 bg-orange-200 text-gray-800 font-bold">
+                    <a href="javascript:void(0);" @onclick="@(() => SetActiveTab("profile"))" class="p-3 @(_activeTab == "profile" ? "bg-orange-200" : "hover:bg-orange-100") text-gray-800 font-bold cursor-pointer">
                         <i class="fas fa-user mr-2"></i>Profile
                     </a>
-                    @* O link de logout foi alterado para chamar a função C# HandleLogout *@
+                    @if (_role == "Seller")
+                    {
+                        <a href="javascript:void(0);" @onclick="@(() => SetActiveTab("products"))" class="p-3 @(_activeTab == "products" ? "bg-orange-200" : "hover:bg-orange-100") text-gray-700 cursor-pointer">
+                            <i class="fas fa-box mr-2"></i>My Products
+                        </a>
+                    }
                     <a href="javascript:void(0);" @onclick="HandleLogout" class="p-3 hover:bg-orange-100 text-gray-700 cursor-pointer">
                         <i class="fas fa-sign-out-alt mr-2"></i>Logout
                     </a>
@@ -289,150 +391,256 @@
             </div>
 
             <div class="md:col-span-2">
-                <div class="bg-orange-50 border-2 border-orange-300/50 rounded-lg p-8">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold text-gray-800">Edit Profile</h2>
-                        @if (!string.IsNullOrEmpty(_message))
+                @if (_activeTab == "profile")
+                {
+                    <div class="bg-orange-50 border-2 border-orange-300/50 rounded-lg p-8">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800">Edit Profile</h2>
+                            @if (!string.IsNullOrEmpty(_message))
+                            {
+                                <span class="@(_isError ? "text-red-600" : "text-green-600") font-bold px-4 py-2 bg-white rounded shadow">
+                                    @_message
+                                </span>
+                            }
+                        </div>
+
+                        @if (_role == "Client")
                         {
-                            <span class="@(_isError ? "text-red-600" : "text-green-600") font-bold px-4 py-2 bg-white rounded shadow">
-                                @_message
-                            </span>
-                        }
-                    </div>
+                            <EditForm Model="_client" OnValidSubmit="SaveClient">
+                                <DataAnnotationsValidator />
+                                <ValidationSummary />
 
-                    @if (_role == "Client")
-                    {
-                        <EditForm Model="_client" OnValidSubmit="SaveClient">
-                            <DataAnnotationsValidator />
-                            <ValidationSummary />
-
-                            <div class="grid grid-cols-1 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Name</label>
-                                    <InputText @bind-Value="_client.Name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
-                                </div>
-                                
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Email (Read Only)</label>
-                                    <InputText @bind-Value="_client.Email" disabled class="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500" />
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Phone</label>
-                                    <InputText @bind-Value="_client.PhoneNumber" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
-                                </div>
-
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div class="col-span-2">
-                                        <label class="block text-sm font-medium text-gray-700">Address 1</label>
-                                        <InputText @bind-Value="_client.Address1" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
-                                    </div>
-                                    <div class="col-span-2">
-                                        <label class="block text-sm font-medium text-gray-700">Address 2</label>
-                                        <InputText @bind-Value="_client.Address2" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                <div class="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Name</label>
+                                        <InputText @bind-Value="_client.Name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
                                     </div>
                                     
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700">City</label>
-                                        <InputText @bind-Value="_client.City" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                        <label class="block text-sm font-medium text-gray-700">Email (Read Only)</label>
+                                        <InputText @bind-Value="_client.Email" disabled class="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500" />
                                     </div>
+
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700">State</label>
-                                        <InputText @bind-Value="_client.State" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                        <label class="block text-sm font-medium text-gray-700">Phone</label>
+                                        <InputText @bind-Value="_client.PhoneNumber" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
                                     </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700">Country</label>
-                                        <InputText @bind-Value="_client.Country" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div class="col-span-2">
+                                            <label class="block text-sm font-medium text-gray-700">Address 1</label>
+                                            <InputText @bind-Value="_client.Address1" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                        </div>
+                                        <div class="col-span-2">
+                                            <label class="block text-sm font-medium text-gray-700">Address 2</label>
+                                            <InputText @bind-Value="_client.Address2" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                        </div>
+                                        
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">City</label>
+                                            <InputText @bind-Value="_client.City" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">State</label>
+                                            <InputText @bind-Value="_client.State" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Country</label>
+                                            <InputText @bind-Value="_client.Country" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Zip Code</label>
+                                            <InputText @bind-Value="_client.ZipCode" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700">Zip Code</label>
-                                        <InputText @bind-Value="_client.ZipCode" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+
+                                    <div class="mt-6">
+                                        <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition">
+                                            Save Changes
+                                        </button>
                                     </div>
                                 </div>
+                            </EditForm>
+                        }
+                        else if (_role == "Seller")
+                        {
+                            <EditForm Model="_seller" OnValidSubmit="SaveSeller">
+                                <DataAnnotationsValidator />
+                                <ValidationSummary />
 
-                                <div class="mt-6">
-                                    <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition">
-                                        Save Changes
-                                    </button>
+                                <div class="grid grid-cols-1 gap-4">
+                                    <div class="flex items-center gap-4">
+                                        @if (!string.IsNullOrEmpty(_seller.PhotoUrl))
+                                        {
+                                            <img src="@_seller.PhotoUrl" alt="Profile" class="w-20 h-20 rounded-full object-cover" />
+                                        }
+                                        <div class="flex-grow">
+                                            <label class="block text-sm font-medium text-gray-700">Photo URL</label>
+                                            <InputText @bind-Value="_seller.PhotoUrl" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Name (Store Name)</label>
+                                        <InputText @bind-Value="_seller.Name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Email (Read Only)</label>
+                                        <InputText @bind-Value="_seller.Email" disabled class="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500" />
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">About Me / Store Description</label>
+                                        <InputTextArea @bind-Value="_seller.AboutMe" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 h-24" />
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Phone</label>
+                                        <InputText @bind-Value="_seller.PhoneNumber" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div class="col-span-2">
+                                            <label class="block text-sm font-medium text-gray-700">Address 1</label>
+                                            <InputText @bind-Value="_seller.Address1" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                        </div>
+                                        <div class="col-span-2">
+                                            <label class="block text-sm font-medium text-gray-700">Address 2</label>
+                                            <InputText @bind-Value="_seller.Address2" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">City</label>
+                                            <InputText @bind-Value="_seller.City" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">State</label>
+                                            <InputText @bind-Value="_seller.State" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Country</label>
+                                            <InputText @bind-Value="_seller.Country" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Zip Code</label>
+                                            <InputText @bind-Value="_seller.ZipCode" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-6">
+                                        <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition">
+                                            Save Changes
+                                        </button>
+                                    </div>
+                                </div>
+                            </EditForm>
+                        }
+                    </div>
+                }
+                else if (_activeTab == "products")
+                {
+                    <div class="bg-orange-50 border-2 border-orange-300/50 rounded-lg p-8">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800">My Products</h2>
+                            <button @onclick="OpenAddProductModal" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition">
+                                <i class="fas fa-plus mr-2"></i>Add New Product
+                            </button>
+                        </div>
+
+                        @if (_productsLoading)
+                        {
+                            <div class="flex items-center justify-center py-16">
+                                <div class="text-center">
+                                    <i class="fas fa-spinner fa-spin text-orange-400 text-4xl mb-4"></i>
+                                    <p class="text-gray-600">Loading products...</p>
                                 </div>
                             </div>
-                        </EditForm>
-                    }
-                    else if (_role == "Seller")
-                    {
-                        <EditForm Model="_seller" OnValidSubmit="SaveSeller">
-                            <DataAnnotationsValidator />
-                            <ValidationSummary />
-
-                            <div class="grid grid-cols-1 gap-4">
-                                <div class="flex items-center gap-4">
-                                    @if (!string.IsNullOrEmpty(_seller.PhotoUrl))
-                                    {
-                                        <img src="@_seller.PhotoUrl" alt="Profile" class="w-20 h-20 rounded-full object-cover" />
-                                    }
-                                    <div class="flex-grow">
-                                        <label class="block text-sm font-medium text-gray-700">Photo URL</label>
-                                        <InputText @bind-Value="_seller.PhotoUrl" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Name (Store Name)</label>
-                                    <InputText @bind-Value="_seller.Name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Email (Read Only)</label>
-                                    <InputText @bind-Value="_seller.Email" disabled class="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500" />
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">About Me / Store Description</label>
-                                    <InputTextArea @bind-Value="_seller.AboutMe" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 h-24" />
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Phone</label>
-                                    <InputText @bind-Value="_seller.PhoneNumber" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
-                                </div>
-
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div class="col-span-2">
-                                        <label class="block text-sm font-medium text-gray-700">Address 1</label>
-                                        <InputText @bind-Value="_seller.Address1" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
-                                    </div>
-                                    <div class="col-span-2">
-                                        <label class="block text-sm font-medium text-gray-700">Address 2</label>
-                                        <InputText @bind-Value="_seller.Address2" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700">City</label>
-                                        <InputText @bind-Value="_seller.City" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700">State</label>
-                                        <InputText @bind-Value="_seller.State" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700">Country</label>
-                                        <InputText @bind-Value="_seller.Country" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700">Zip Code</label>
-                                        <InputText @bind-Value="_seller.ZipCode" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" />
-                                    </div>
-                                </div>
-
-                                <div class="mt-6">
-                                    <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition">
-                                        Save Changes
-                                    </button>
-                                </div>
+                        }
+                        else if (_sellerProducts.Count == 0)
+                        {
+                            <div class="text-center py-16">
+                                <i class="fas fa-box-open text-gray-300 text-6xl mb-4"></i>
+                                <p class="text-gray-600 text-lg">No products found</p>
                             </div>
-                        </EditForm>
-                    }
-                </div>
+                        }
+                        else
+                        {
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                @foreach (var product in _sellerProducts)
+                                {
+                                    <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
+                                        <div class="mb-4 h-48 bg-gray-100 rounded flex items-center justify-center">
+                                            <i class="fas fa-image text-gray-300 text-4xl"></i>
+                                        </div>
+                                        <h3 class="font-semibold text-gray-800 mb-2">@product.Name</h3>
+                                        <p class="text-sm text-gray-600 mb-3 line-clamp-2">@product.Description</p>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-lg font-bold text-orange-500">$@product.GetPriceAsDecimal().ToString("F2")</span>
+                                            <button class="bg-orange-400 hover:bg-orange-500 text-white px-4 py-2 rounded transition-colors">
+                                                Edit
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
             </div>
         </div>
     }
 </div>
+
+@if (_showAddProductModal)
+{
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Add New Product</h3>
+            <EditForm Model="_newProduct" OnValidSubmit="AddNewProduct">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Name</label>
+                        <InputText @bind-Value="_newProduct.Name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" required />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Description</label>
+                        <InputTextArea @bind-Value="_newProduct.Description" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 h-24" />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Price</label>
+                        <InputNumber @bind-Value="_newProduct.Price" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" required />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Inventory</label>
+                        <InputNumber @bind-Value="_newProduct.Inventory" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" required />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Category</label>
+                        <InputSelect @bind-Value="_newProduct.CategoryId" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" required>
+                            @foreach (var category in _categories)
+                            {
+                                <option value="@category.CategoryId">@category.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-4 mt-6">
+                    <button type="button" @onclick="CloseAddProductModal" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition">
+                        Add Product
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}

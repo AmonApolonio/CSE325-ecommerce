@@ -50,7 +50,7 @@ namespace backend.Controllers
         public async Task<ActionResult<Client>> GetClientById(long id)
         {
             // O FindAsync usa a chave primária, que é UserId
-            var client = await _context.Clients.Include(c => c.Carts).FirstOrDefaultAsync(c => c.UserId == id); 
+            var client = await _context.Clients.FindAsync(id); 
 
             if (client == null)
             {
@@ -125,7 +125,7 @@ namespace backend.Controllers
                 return BadRequest("Email is required.");
             }
 
-            var client = await _context.Clients.Include(c => c.Carts).FirstOrDefaultAsync(c => c.Email == email);
+            var client = await _context.Clients.FirstOrDefaultAsync(c => c.Email == email);
 
             if (client == null)
             {

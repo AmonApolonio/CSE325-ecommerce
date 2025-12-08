@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.BusinessLogic; 
 using System; 
-using System.Security.Claims; // Required for ClaimTypes
+using System.Security.Claims;
 
 namespace backend.Controllers;
 
@@ -19,21 +19,78 @@ public class CartsController : ControllerBase
         _context = context;
     }
 
-    // Helper method to extract the UserId from the authentication context (Real Standard)
+    // Helper method to extract the UserId from the authentication context
     private long? GetAuthenticatedUserId()
     {
-        // Tries to find the identification claim (usually NameIdentifier, which holds the user ID)
-        var userIdClaim = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userIdClaim = HttpContext.User.FindFirstValue("UserId");
         
         if (!string.IsNullOrEmpty(userIdClaim) && long.TryParse(userIdClaim, out long parsedId))
         {
             return parsedId;
         }
         
-        // Returns null if there is no authentication or if the ID is invalid
         return null; 
     }
     
+    // =================================================================
+    // 0. GET api/carts/user
+    // Gets or creates the authenticated user's cart.
+    // Returns the cart ID for the authenticated user, or creates one if not found.
+    // =================================================================
+    [HttpGet("user")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<object>> GetUserCart()
+    {
+        long? userId = GetAuthenticatedUserId();
+
+        if (!userId.HasValue)
+        {
+            return Unauthorized("Authentication is required to access user cart.");
+        }
+
+        // Try to find existing cart for user
+        var existingCart = await _context.Carts
+            .AsNoTracking()
+            .Include(c => c.CartItems)
+                .ThenInclude(ci => ci.Product)
+            .FirstOrDefaultAsync(c => c.UserId == userId.Value);
+
+        if (existingCart != null)
+        {
+            decimal total = existingCart.CalculateTotal();
+            return Ok(new
+            {
+                cartId = existingCart.CartId,
+                userId = existingCart.UserId,
+                createdDate = existingCart.CreatedDate,
+                updatedDate = existingCart.UpdatedDate,
+                cartItems = (object)(existingCart?.CartItems?.Select(ci => new { ci.CartItemId, ci.ProductId, ci.Quantity }).ToList()) ?? new List<object>(),
+                total = total
+            });
+        }
+
+        // Create new cart if user doesn't have one
+        var newCart = new Cart
+        {
+            UserId = userId.Value,
+            CreatedDate = DateOnly.FromDateTime(DateTime.UtcNow),
+        };
+
+        _context.Carts.Add(newCart);
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            cartId = newCart.CartId,
+            userId = newCart.UserId,
+            createdDate = newCart.CreatedDate,
+            updatedDate = newCart.UpdatedDate,
+            cartItems = new List<object>(),
+            total = 0
+        });
+    }
+
     // =================================================================
     // 1. POST api/carts
     // Creates a new cart. Unified for anonymous or logged-in users.
@@ -79,23 +136,28 @@ public class CartsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<object>> GetCart(long cartId)
     {
-        var cart = await _context.Carts
+        _context.ChangeTracker.Clear();
+        
+        var updatedCart = await _context.Carts
+            .AsNoTracking()
             .Include(c => c.CartItems)
                 .ThenInclude(ci => ci.Product)
             .FirstOrDefaultAsync(c => c.CartId == cartId);
 
-        if (cart == null)
+        if (updatedCart == null)
         {
             return NotFound("Cart not found.");
         }
 
-        // Calculates the cart total using the extension method
-        decimal total = cart.CalculateTotal();
+        decimal total = updatedCart.CalculateTotal();
         
-        // Returns the cart and total in an anonymous object (ideally it would be a DTO)
         return Ok(new { 
-            Cart = cart, 
-            Total = total 
+            cartId = updatedCart.CartId,
+            userId = updatedCart.UserId,
+            createdDate = updatedCart.CreatedDate,
+            updatedDate = updatedCart.UpdatedDate,
+            cartItems = (object)(updatedCart?.CartItems?.Select(ci => new { ci.CartItemId, ci.ProductId, ci.Quantity }).ToList()) ?? new List<object>(),
+            total = total
         });
     }
 
@@ -109,13 +171,11 @@ public class CartsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> AddItemToCart(long cartId, [FromBody] AddItemToCartDto dto)
     {
-        // 1. Initial validations
         if (dto.Quantity <= 0)
         {
             return BadRequest("The quantity to be added must be greater than zero.");
         }
 
-        // 2. Load the cart
         var cart = await _context.Carts
             .Include(c => c.CartItems)
             .FirstOrDefaultAsync(c => c.CartId == cartId);
@@ -125,7 +185,6 @@ public class CartsController : ControllerBase
             return NotFound($"Cart with ID {cartId} not found.");
         }
 
-        // 3. Check if the product exists and get its inventory
         var productInfo = await _context.Products
             .Select(p => new { p.ProductId, p.Inventory })
             .FirstOrDefaultAsync(p => p.ProductId == dto.ProductId);
@@ -135,19 +194,16 @@ public class CartsController : ControllerBase
             return NotFound($"Product with ID {dto.ProductId} not found.");
         }
 
-        // 4. Find or create the CartItem
         var existingItem = cart.CartItems
             .FirstOrDefault(ci => ci.ProductId == dto.ProductId);
 
         if (existingItem != null)
         {
-            // Existing item: Increment the quantity
             existingItem.Quantity += dto.Quantity;
             
-            // 5. Inventory Validation (Example)
             if (existingItem.Quantity > productInfo.Inventory)
             {
-                existingItem.Quantity -= dto.Quantity; // Revert the change
+                existingItem.Quantity -= dto.Quantity;
                 return BadRequest($"Insufficient stock. Maximum available: {productInfo.Inventory}.");
             }
 
@@ -155,9 +211,6 @@ public class CartsController : ControllerBase
         }
         else
         {
-            // New item: Create a new CartItem
-            
-            // 5. Inventory Validation for new item
             if (dto.Quantity > productInfo.Inventory)
             {
                 return BadRequest($"Insufficient stock. Maximum available: {productInfo.Inventory}.");
@@ -170,13 +223,30 @@ public class CartsController : ControllerBase
                 Quantity = dto.Quantity
             };
             
-            cart.CartItems.Add(newItem); 
+            _context.CartItems.Add(newItem);
         }
         
-        // 6. Save changes
         await _context.SaveChangesAsync();
 
-        return Ok(cart);
+        _context.ChangeTracker.Clear();
+        var updatedCart = await _context.Carts
+            .Include(c => c.CartItems)
+                .ThenInclude(ci => ci.Product)
+            .FirstOrDefaultAsync(c => c.CartId == cartId);
+
+        if (updatedCart == null)
+        {
+            return StatusCode(500, "Cart not found after saving");
+        }
+
+        decimal total = updatedCart?.CalculateTotal() ?? 0;
+
+        return Ok(new { 
+            message = "Item added to cart successfully", 
+            cartId = cartId,
+            cartItems = (object)(updatedCart?.CartItems?.Select(ci => new { ci.CartItemId, ci.ProductId, ci.Quantity }).ToList()) ?? new List<object>(),
+            total = total
+        });
     }
     
     // =================================================================
@@ -274,35 +344,44 @@ public class CartsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Cart>> MergeCarts(long anonymousCartId)
     {
-        // 1. REAL ID RETRIEVAL: This method MUST be called by an authenticated user. 
         long? optionalUserId = GetAuthenticatedUserId();
 
         if (!optionalUserId.HasValue)
         {
-            // If there is no userId, we cannot perform the merge, as we don't know who is logging in
             return Unauthorized("Authentication is required to perform cart merging.");
         }
         
         long userId = optionalUserId.Value;
 
-        // 2. Try to load the anonymous cart (must have UserId == null)
         var anonymousCart = await _context.Carts
             .Include(c => c.CartItems)
             .FirstOrDefaultAsync(c => c.CartId == anonymousCartId && c.UserId == null);
-
+        
         if (anonymousCart == null)
         {
-            return NotFound($"Anonymous cart with ID {anonymousCartId} not found or already associated.");
+            var cartExists = await _context.Carts
+                .Include(c => c.CartItems)
+                .FirstOrDefaultAsync(c => c.CartId == anonymousCartId);
+            
+            if (cartExists != null)
+            {
+                if (cartExists.UserId == userId)
+                {
+                    return Ok(cartExists);
+                }
+                
+                return BadRequest($"Cart with ID {anonymousCartId} belongs to a different user.");
+            }
+            
+            return NotFound($"Cart with ID {anonymousCartId} not found.");
         }
 
-        // 3. Try to find an existing (authenticated) cart for this user
         var authenticatedCart = await _context.Carts
             .Include(c => c.CartItems)
             .FirstOrDefaultAsync(c => c.UserId == userId);
 
         if (authenticatedCart == null)
         {
-            // SCENARIO A: User does not have a cart. Just associate the anonymous one.
             anonymousCart.UserId = userId;
             _context.Carts.Update(anonymousCart);
             await _context.SaveChangesAsync();
@@ -310,8 +389,6 @@ public class CartsController : ControllerBase
         }
         else
         {
-            // SCENARIO B: User already has a cart. Merge the items.
-
             foreach (var anonItem in anonymousCart.CartItems.ToList()) 
             {
                 var existingAuthItem = authenticatedCart.CartItems
@@ -319,13 +396,11 @@ public class CartsController : ControllerBase
 
                 if (existingAuthItem != null)
                 {
-                    // Duplicate item: Sum the quantities
                     existingAuthItem.Quantity += anonItem.Quantity;
                     _context.CartItems.Update(existingAuthItem);
                 }
                 else
                 {
-                    // New item: Add to the authenticated cart
                     authenticatedCart.CartItems.Add(new CartItem
                     {
                         CartId = authenticatedCart.CartId,
@@ -334,11 +409,9 @@ public class CartsController : ControllerBase
                     });
                 }
                 
-                // Remove the item from the anonymous cart
                 _context.CartItems.Remove(anonItem);
             }
 
-            // 4. Delete the anonymous cart and save all changes
             _context.Carts.Remove(anonymousCart);
             _context.Carts.Update(authenticatedCart);
 
