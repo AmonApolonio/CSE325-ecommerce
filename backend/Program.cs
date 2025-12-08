@@ -9,12 +9,13 @@ using Microsoft.AspNetCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Ensure configuration loads from all sources (appsettings.json, environment variables, etc.)
-builder.Configuration
-    .SetBasePath(Directory.GetCurrentDirectory())
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
-    .AddEnvironmentVariables();
+// Configuration is automatically loaded by CreateBuilder in this order:
+// 1. appsettings.json
+// 2. appsettings.{Environment}.json
+// 3. Environment variables
+// 4. Command line arguments
+// Just ensure we're reading from environment variables as well
+builder.Configuration.AddEnvironmentVariables();
 
 // =======================================================
 // 1. AUTENTICAÇÃO JWT BEARER
@@ -63,13 +64,25 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 // 2. DATABASE CONTEXT
 // =======================================================
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// If connection string is not found in appsettings, try environment variable
 if (string.IsNullOrEmpty(connectionString))
 {
-    // Try to build connection string from individual env vars
-    var dbHost = builder.Configuration["DB_HOST"];
-    var dbName = builder.Configuration["DB_NAME"];
-    var dbUser = builder.Configuration["DB_USER"];
-    var dbPassword = builder.Configuration["DB_PASSWORD"];
+    var envConnStr = Environment.GetEnvironmentVariable("CONNECTIONSTRINGS_DEFAULTCONNECTION") 
+                     ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+    if (!string.IsNullOrEmpty(envConnStr))
+    {
+        connectionString = envConnStr;
+    }
+}
+
+// If still not found, try to build from individual env vars
+if (string.IsNullOrEmpty(connectionString))
+{
+    var dbHost = Environment.GetEnvironmentVariable("DB_HOST") ?? builder.Configuration["DB_HOST"];
+    var dbName = Environment.GetEnvironmentVariable("DB_NAME") ?? builder.Configuration["DB_NAME"];
+    var dbUser = Environment.GetEnvironmentVariable("DB_USER") ?? builder.Configuration["DB_USER"];
+    var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? builder.Configuration["DB_PASSWORD"];
     
     if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbName) && !string.IsNullOrEmpty(dbUser))
     {
