@@ -21,7 +21,7 @@ public class TokenService : ITokenService
     public string GenerateToken(string email, string role, long userId)
     {
         var key = _config["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is missing");
-        var issuer = _config["Jwt:Issuer"];
+        var issuer = _config["Jwt:Issuer"] ?? "ecommerce";
         var audiences = _config.GetSection("Jwt:Audiences").Get<string[]>() ?? new[] { issuer };
 
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));

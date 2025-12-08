@@ -50,8 +50,8 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
 
         // Lê Issuer e múltiplos Audiences do appsettings.json
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudiences = builder.Configuration.GetSection("Jwt:Audiences").Get<string[]>(),
+        ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "ecommerce",
+        ValidAudiences = builder.Configuration.GetSection("Jwt:Audiences").Get<string[]>() ?? new[] { builder.Configuration["Jwt:Issuer"] ?? "ecommerce" },
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(jwtKey)
         )
