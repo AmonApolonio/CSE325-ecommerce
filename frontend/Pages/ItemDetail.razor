@@ -119,8 +119,15 @@ else
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
             @* Images Section *@
             <div>
-                <div class="mb-4 h-96 bg-gray-100 rounded-lg border-2 border-orange-300/50 flex items-center justify-center">
-                    <i class="fas fa-image text-gray-300 text-6xl"></i>
+                <div class="mb-4 h-96 bg-gray-100 rounded-lg border-2 border-orange-300/50 flex items-center justify-center overflow-hidden">
+                    @if (!string.IsNullOrEmpty(_product.Url))
+                    {
+                        <img src="@_product.Url" alt="@_product.Name" class="w-full h-full object-cover" />
+                    }
+                    else
+                    {
+                        <i class="fas fa-image text-gray-300 text-6xl"></i>
+                    }
                 </div>
             </div>
 

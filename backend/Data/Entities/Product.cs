@@ -15,6 +15,8 @@ public partial class Product
 
     public decimal Inventory { get; set; }
 
+    public string? Url { get; set; }
+
     public long CategoryId { get; set; }
 
     public long SellerId { get; set; }

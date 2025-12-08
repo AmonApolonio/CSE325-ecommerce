@@ -133,8 +133,15 @@
                 @foreach (var product in _filteredProducts)
                 {
                     <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg transition-shadow p-4">
-                        <div class="mb-4 h-48 bg-gray-100 rounded flex items-center justify-center">
-                            <i class="fas fa-image text-gray-300 text-4xl"></i>
+                        <div class="mb-4 h-48 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
+                            @if (!string.IsNullOrEmpty(product.Url))
+                            {
+                                <img src="@product.Url" alt="@product.Name" class="w-full h-full object-cover" />
+                            }
+                            else
+                            {
+                                <i class="fas fa-image text-gray-300 text-4xl"></i>
+                            }
                         </div>
                         <h3 class="font-semibold text-gray-800 mb-2">@product.Name</h3>
                         <p class="text-sm text-gray-600 mb-3 line-clamp-2">@product.Description</p>

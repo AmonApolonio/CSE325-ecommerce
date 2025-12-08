@@ -22,6 +22,8 @@
     private bool _isLoading = true;
     private string? _errorMessage;
     private string? _userRole;
+    private string? _successMessage;
+    private bool _showSuccessMessage = false;
 
     /// <summary>
     /// Initializes the component and loads products and categories.
@@ -123,7 +125,14 @@
             var cartId = userCart.CartId;
 
             await CartService.AddToCartAsync(cartId, productId, 1);
-            // Optionally, show success message or update UI
+            _successMessage = "Item added to cart successfully!";
+            _showSuccessMessage = true;
+            StateHasChanged();
+            
+            // Auto-hide the success message after 3 seconds
+            await Task.Delay(3000);
+            _showSuccessMessage = false;
+            StateHasChanged();
         }
         catch (Exception ex)
         {
@@ -159,6 +168,16 @@ else if (!string.IsNullOrEmpty(_errorMessage))
 }
 else
 {
+    @if (_showSuccessMessage && !string.IsNullOrEmpty(_successMessage))
+    {
+        <div class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle mr-3"></i>
+                <span>@_successMessage</span>
+            </div>
+        </div>
+    }
+
     <div class="bg-white">
         @* Hero Section *@
         <section class="mb-8">
@@ -185,8 +204,15 @@ else
                             class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg transition-shadow p-4 cursor-pointer"
                             @onclick="@(() => HandleProductClick(product.ProductId))"
                         >
-                            <div class="mb-4 h-48 bg-gray-100 rounded flex items-center justify-center">
-                                <i class="fas fa-image text-gray-300 text-4xl"></i>
+                            <div class="mb-4 h-48 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
+                                @if (!string.IsNullOrEmpty(product.Url))
+                                {
+                                    <img src="@product.Url" alt="@product.Name" class="w-full h-full object-cover" />
+                                }
+                                else
+                                {
+                                    <i class="fas fa-image text-gray-300 text-4xl"></i>
+                                }
                             </div>
                             <h3 class="font-semibold text-gray-800 mb-2 line-clamp-1">@product.Name</h3>
                             <p class="text-sm text-gray-600 mb-3 line-clamp-2">@product.Description</p>

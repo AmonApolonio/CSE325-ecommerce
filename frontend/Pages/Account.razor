@@ -269,6 +269,7 @@
             Inventory = product.Inventory,
             CategoryId = product.CategoryId,
             SellerId = product.SellerId,
+            Url = product.Url,
             CartItems = product.CartItems,
             OrdersProducts = product.OrdersProducts,
             Seller = product.Seller
@@ -665,8 +666,15 @@
                                 @foreach (var product in _sellerProducts)
                                 {
                                     <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-3">
-                                        <div class="mb-3 h-40 bg-gray-100 rounded flex items-center justify-center">
-                                            <i class="fas fa-image text-gray-300 text-3xl"></i>
+                                        <div class="mb-3 h-40 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
+                                            @if (!string.IsNullOrEmpty(product.Url))
+                                            {
+                                                <img src="@product.Url" alt="@product.Name" class="w-full h-full object-cover" />
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-image text-gray-300 text-3xl"></i>
+                                            }
                                         </div>
                                         <h3 class="font-semibold text-gray-800 mb-1 text-sm line-clamp-1">@product.Name</h3>
                                         <p class="text-xs text-gray-600 mb-3 line-clamp-2">@product.Description</p>
@@ -731,6 +739,11 @@
                             }
                         </InputSelect>
                     </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Image URL</label>
+                        <InputText @bind-Value="_newProduct.Url" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" placeholder="https://example.com/image.jpg" />
+                    </div>
                 </div>
 
                 <div class="flex justify-end space-x-4 mt-6">
@@ -784,6 +797,11 @@
                                 <option value="@category.CategoryId">@category.Name</option>
                             }
                         </InputSelect>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Image URL</label>
+                        <InputText @bind-Value="_editingProduct.Url" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500" placeholder="https://example.com/image.jpg" />
                     </div>
                 </div>
 

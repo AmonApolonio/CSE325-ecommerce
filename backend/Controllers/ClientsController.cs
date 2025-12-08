@@ -158,7 +158,11 @@ namespace backend.Controllers
             existingClient.Name = detailsDto.Name;
             existingClient.PhoneNumber = detailsDto.PhoneNumber;
             existingClient.Address1 = detailsDto.Address1;
-            // ... mapeie os outros campos de endereço aqui
+            existingClient.Address2 = detailsDto.Address2;
+            existingClient.City = detailsDto.City;
+            existingClient.State = detailsDto.State;
+            existingClient.Country = detailsDto.Country;
+            existingClient.ZipCode = detailsDto.ZipCode;
 
             // O Entity Framework rastreia as mudanças e atualiza apenas o que mudou.
             // Não precisa de EntityState.Modified se você usou FindAsync() e alterou as propriedades.

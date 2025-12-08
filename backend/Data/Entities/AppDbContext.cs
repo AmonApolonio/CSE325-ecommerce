@@ -256,6 +256,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Price)
                 .HasDefaultValue(0)
                 .HasColumnName("price");
+            entity.Property(e => e.Url).HasColumnName("url");
             entity.Property(e => e.SellerId).HasColumnName("seller_id");
 
             entity.HasOne(d => d.Seller).WithMany(p => p.Products)
