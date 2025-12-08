@@ -28,6 +28,8 @@ builder.Services.AddAuthentication(options =>
 .AddJwtBearer(options =>
 {
     var jwtKey = builder.Configuration["Jwt:Key"];
+    var issuer = builder.Configuration["Jwt:Issuer"] ?? "ecommerce";
+    var audiences = builder.Configuration.GetSection("Jwt:Audiences").Get<string[]>() ?? new[] { issuer };
     
     // If JWT Key is not configured, disable JWT validation
     if (string.IsNullOrEmpty(jwtKey))
@@ -49,9 +51,9 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
 
-        // Lê Issuer e múltiplos Audiences do appsettings.json
-        ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "ecommerce",
-        ValidAudiences = builder.Configuration.GetSection("Jwt:Audiences").Get<string[]>() ?? new[] { builder.Configuration["Jwt:Issuer"] ?? "ecommerce" },
+        // Use consistent defaults for issuer and audiences
+        ValidIssuer = issuer,
+        ValidAudiences = audiences,
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(jwtKey)
         )
