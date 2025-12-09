@@ -21,7 +21,6 @@ namespace backend.Controllers
         // 1. POST: api/Sellers (CREATE)
         // ---------------------------------------------------------
         [HttpPost]
-        [Authorize]
         public async Task<ActionResult<Seller>> PostSeller([FromBody] Seller seller)
         {
             // 1. Add the seller to the context
