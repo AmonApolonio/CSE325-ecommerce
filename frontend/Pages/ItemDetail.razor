@@ -7,6 +7,7 @@
 
 @inject IProductService ProductService
 @inject ISellerService SellerService
+@inject ICartService CartService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
@@ -21,6 +22,8 @@
     private bool _isLoading = true;
     private string? _errorMessage;
     private string? _userRole;
+    private string? _successMessage;
+    private bool _showSuccessMessage = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -57,16 +60,42 @@
         }
     }
 
-    private void HandleAddToCart()
+    private async Task HandleAddToCart()
     {
         try
         {
-            // TODO: Implement add to cart when cart endpoints are available
-            NavigationManager.NavigateTo("cart");
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            if (!authState.User.Identity?.IsAuthenticated ?? true)
+            {
+                NavigationManager.NavigateTo("login");
+                return;
+            }
+
+            var email = authState.User.FindFirst("sub")?.Value;
+            var role = authState.User.FindFirst(ClaimTypes.Role)?.Value;
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(role))
+            {
+                _errorMessage = "Unable to identify user.";
+                return;
+            }
+
+            // Get the authenticated user's cart
+            var userCart = await CartService.GetUserCartAsync();
+            var cartId = userCart.CartId;
+
+            await CartService.AddToCartAsync(cartId, _product!.ProductId, 1);
+            _successMessage = "Item added to cart successfully!";
+            _showSuccessMessage = true;
+            StateHasChanged();
+            
+            // Auto-hide the success message after 3 seconds
+            await Task.Delay(3000);
+            _showSuccessMessage = false;
+            StateHasChanged();
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Error: {ex.Message}";
+            _errorMessage = $"Error adding to cart: {ex.Message}";
         }
     }
 
@@ -108,6 +137,16 @@ else if (_product == null)
 }
 else
 {
+    @if (_showSuccessMessage && !string.IsNullOrEmpty(_successMessage))
+    {
+        <div class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle mr-3"></i>
+                <span>@_successMessage</span>
+            </div>
+        </div>
+    }
+
     <div class="bg-white">
         @* Back Button *@
         <div class="mb-6">

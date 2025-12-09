@@ -39,7 +39,7 @@ using Microsoft.AspNetCore.Authorization;namespace backend.Controllers
             // 1. Filtrar por Nome (se fornecido)
             if (!string.IsNullOrEmpty(name))
             {
-                products = products.Where(p => p.Name.Contains(name)); 
+                products = products.Where(p => p.Name.ToLower().Contains(name.ToLower())); 
             }
             
             // 2. Filtrar por SellerId (se fornecido)
