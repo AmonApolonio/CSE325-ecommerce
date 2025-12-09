@@ -43,9 +43,8 @@
 
 <header class="bg-white border-b-2 border-orange-300/50 p-4">
     <div class="max-w-7xl mx-auto flex items-center justify-between">
-        @* Logo *@
         <div class="flex items-center flex-shrink-0">
-            <a @onclick='() => NavigationManager.NavigateTo("")' class="flex items-center" style="cursor: pointer;">
+            <a @onclick='() => NavigationManager.NavigateTo("")' class="flex items-center" style="cursor: pointer; outline: none;" tabindex="-1">
                 <img
                     src="images/icon.png"
                     alt="SharpCraft Shop Logo"
